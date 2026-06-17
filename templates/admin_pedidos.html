@@ -1,0 +1,156 @@
+{% extends "base.html" %}
+{% block title %}Pedidos — Admin HIERRONORT{% endblock %}
+{% block content %}
+
+<div class="dashboard-v2">
+  <div class="page-head">
+    <div class="page-head-left">
+      <a href="{{ url_for('admin') }}" style="font-size:12px; color:var(--v2-muted); text-decoration:none;">← Admin</a>
+      <h1>Pedidos {% if filtro != 'todos' %}<span class="muted" style="font-size:14px; font-weight:500;">({{ filtro }})</span>{% endif %}</h1>
+      <p>{{ counts.todos }} pedido{{ '' if counts.todos == 1 else 's' }} en total · {{ counts.pendientes }} pendiente{{ '' if counts.pendientes == 1 else 's' }}</p>
+    </div>
+  </div>
+
+  <div class="pedidos-v2">
+    <div class="filtros">
+      <a class="filtro {% if filtro == 'pendientes' %}active{% endif %}" href="{{ url_for('admin_pedidos', f='pendientes') }}">
+        Pendientes <span class="cnt o">{{ counts.pendientes }}</span>
+      </a>
+      <a class="filtro {% if filtro == 'facturados' %}active{% endif %}" href="{{ url_for('admin_pedidos', f='facturados') }}">
+        Facturados <span class="cnt g">{{ counts.facturados }}</span>
+      </a>
+      <a class="filtro {% if filtro == 'cobrados' %}active{% endif %}" href="{{ url_for('admin_pedidos', f='cobrados') }}">
+        Cobrados <span class="cnt">{{ counts.cobrados }}</span>
+      </a>
+      <a class="filtro {% if filtro == 'entregados' %}active{% endif %}" href="{{ url_for('admin_pedidos', f='entregados') }}">
+        Entregados <span class="cnt b">{{ counts.entregados }}</span>
+      </a>
+    </div>
+
+    {% if pedidos %}
+      <div class="tabla-wrap">
+        <table class="tabla">
+          <thead>
+            <tr>
+              <th style="width:32px"></th>
+              <th>Cliente</th>
+              <th>ID</th>
+              <th>Fecha</th>
+              <th>Entrega</th>
+              <th>Pago</th>
+              <th class="r">Total</th>
+              <th>Estado</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for p in pedidos %}
+              <tr class="clickable" data-target="det-{{ loop.index }}" onclick="toggleDet('det-{{ loop.index }}', this)">
+                <td><span class="expander">▸</span></td>
+                <td><strong>{{ p.cliente_nombre or '—' }}</strong></td>
+                <td style="font-family:monospace; font-size:12px; color:var(--v2-fg); font-weight:600;">
+                  {% if p.nro_factura %}
+                    {{ p.nro_factura }}
+                    <small style="display:block; font-size:10px; color:var(--v2-muted); font-weight:400;">{{ p.nro }}</small>
+                  {% else %}
+                    {{ p.nro }}
+                  {% endif %}
+                </td>
+                <td style="color:var(--v2-muted); font-size:12px;">{{ (p.fecha_hora or '').split('.')[0] }}</td>
+                <td>{{ 'Retira en local' if p.lugar_entrega == 'retira' else 'A domicilio' if p.lugar_entrega else '—' }}</td>
+                <td>{{ p.forma_pago or '—' }}</td>
+                <td class="r" style="font-weight:700;">{{ fmt(p.total) }}</td>
+                <td>
+                  {% if p.estado == 'entregado' %}
+                    <span class="estado-tag estado-entregado">Entregado</span>
+                  {% elif p.estado == 'pagado' %}
+                    <span class="estado-tag estado-cobrado">Cobrado</span>
+                  {% elif p.estado == 'aprobado' %}
+                    <span class="estado-tag estado-aprobado">Facturado</span>
+                  {% elif p.estado == 'rechazado' %}
+                    <span class="estado-tag estado-rechazado">Rechazado</span>
+                  {% else %}
+                    <span class="estado-tag estado-pendiente {% if p.es_viejo %}estado-critico{% endif %}">
+                      {% if p.es_viejo %}⚠ +24h Pendiente{% else %}Pendiente{% endif %}
+                    </span>
+                  {% endif %}
+                </td>
+              </tr>
+              <tr class="detalle" id="det-{{ loop.index }}">
+                <td colspan="8">
+                  <div class="detalle-inner">
+                    <div class="detalle-info">
+                      <table class="items-table">
+                        <thead>
+                          <tr><th class="r">Cant.</th><th>Descripción</th><th class="r">Precio</th><th class="r">Subtotal</th></tr>
+                        </thead>
+                        <tbody>
+                          {% for it in p['items'] %}
+                            {% set _cod = it.cod or it.codigo or '' %}
+                            {% set _desc = it.desc or it.detalle or it.descripcion or '' %}
+                            {% set _cant = it.cantidad or it.cant or 0 %}
+                            {% set _precio = it.precio_por or it.precio_unitario or 0 %}
+                            {% set _uv = it.unidad_venta or '' %}
+                            <tr>
+                              <td class="r">{{ _cant }}</td>
+                              <td>{{ _desc }}</td>
+                              <td class="r">{{ fmt(_precio) }}{% if _uv == 'metro' %}/m{% elif _uv == 'kg' %}/kg{% endif %}</td>
+                              <td class="r">{{ fmt((_cant or 0) * (_precio or 0)) }}</td>
+                            </tr>
+                          {% endfor %}
+                        </tbody>
+                      </table>
+                    </div>
+                    <div class="detalle-acciones">
+                      {% if p.estado == 'pendiente' %}
+                        <a class="btn-accion btn-green" href="{{ url_for('admin_pedido_facturar', nro=p.nro) }}" style="text-decoration:none;">
+                          ✓ Facturar
+                        </a>
+                      {% elif p.estado == 'aprobado' %}
+                        <a class="btn-accion btn-blue" href="{{ url_for('admin_pedido_cobrar', nro=p.nro) }}" style="text-decoration:none;">
+                          $ Cobrar
+                        </a>
+                      {% elif p.estado == 'pagado' %}
+                        <form method="post" action="{{ url_for('admin_pedido_estado', nro=p.nro) }}">
+                          <input type="hidden" name="nuevo_estado" value="entregado">
+                          <button class="btn-accion btn-green" type="submit" style="width:100%;"
+                                  onclick="return confirm('¿Confirmar la entrega del pedido {{ p.nro }}?')">
+                            ✓ Confirmar entregado
+                          </button>
+                        </form>
+                      {% endif %}
+                      {% if p.cliente_id and p.estado in ('pendiente', 'aprobado') %}
+                        <a class="btn-accion btn-outline" href="{{ url_for('admin_pedido_editar', nro=p.nro) }}">
+                          ✎ Editar
+                        </a>
+                        <form method="post" action="{{ url_for('admin_pedido_eliminar', nro=p.nro) }}" style="display:inline;"
+                              onsubmit="return confirm('¿Eliminar el pedido {{ p.nro }}? Esta accion no se puede deshacer.');">
+                          <button class="btn-accion" type="submit" style="width:100%; background:#fee2e2; color:#991b1b; border:1px solid #fecaca;">🗑 Eliminar</button>
+                        </form>
+                      {% endif %}
+                    </div>
+                  </div>
+                </td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    {% else %}
+      <div class="empty" style="background:var(--v2-surface); border:1px solid var(--v2-border); border-radius:10px; padding:32px; text-align:center; color:var(--v2-muted);">
+        <p>No hay pedidos {{ filtro }} {% if filtro != 'todos' %}todavía{% endif %}.</p>
+      </div>
+    {% endif %}
+  </div>
+</div>
+
+<script>
+function toggleDet(id, row) {
+  var det = document.getElementById(id);
+  if (!det) return;
+  det.classList.toggle('open');
+  var arrow = row.querySelector('.expander');
+  if (arrow) arrow.classList.toggle('open');
+}
+</script>
+
+{% endblock %}
