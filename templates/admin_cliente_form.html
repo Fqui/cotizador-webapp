@@ -1,0 +1,91 @@
+{% extends "base.html" %}
+{% block title %}Nuevo cliente — Admin{% endblock %}
+{% block content %}
+
+{% set fd = form_data or {} %}
+{% set is_edit = cliente is not none %}
+
+<div class="page-head">
+  <a href="{{ url_for('admin_clientes') }}" class="back">← Clientes</a>
+  <h1>Nuevo cliente</h1>
+  <p class="muted">Solo el usuario. La contrasena se genera automaticamente (6 digitos).</p>
+</div>
+
+{% if mensaje %}
+  <div class="flash flash-{{ 'ok' if mensaje.tipo == 'ok' else 'error' }}">{{ mensaje.texto }}</div>
+{% endif %}
+
+<form method="post" class="admin-form" style="grid-template-columns: 1fr;">
+  <label>
+    <span>Usuario (login)</span>
+    <input type="text" name="usuario" value="{{ fd.usuario or '' }}"
+           pattern="[a-z0-9_]+" required autofocus
+           placeholder="ej: corralon_pilar">
+  </label>
+  <p class="muted" style="margin-top: 4px;">
+    El cliente completara nombre, razon social, CUIT y demas datos en su primer login.
+  </p>
+  <div style="grid-column: 1 / -1; display:flex; gap:8px;">
+    <button type="submit" class="btn btn-primary">Crear cliente</button>
+    <a href="{{ url_for('admin_clientes') }}" class="btn btn-secondary">Cancelar</a>
+  </div>
+</form>
+
+{% if show_modal %}
+<div class="modal-backdrop" id="modal-pass">
+  <div class="modal">
+    <h2>Cliente creado</h2>
+    <div class="modal-warning">
+      Esta contrasena se muestra <strong>una sola vez</strong>. Copiala y mandasela al cliente por WhatsApp.
+    </div>
+    <div class="modal-body">
+      <div class="modal-field">
+        <span class="muted">Usuario</span>
+        <div class="modal-value">{{ modal_usuario }}</div>
+      </div>
+      <div class="modal-field">
+        <span class="muted">Contrasena (6 digitos)</span>
+        <div class="modal-pass" id="modal-pass-value">{{ modal_pass }}</div>
+      </div>
+    </div>
+    <div class="modal-actions">
+      <button type="button" class="btn btn-primary" id="btn-copiar-pass">Copiar contrasena</button>
+      <a href="{{ url_for('admin_cliente_ficha', cid=modal_cid) }}" class="btn btn-secondary">Cerrar</a>
+    </div>
+  </div>
+</div>
+
+<script>
+(function() {
+  var btnCopiar = document.getElementById('btn-copiar-pass');
+  if (btnCopiar) {
+    btnCopiar.addEventListener('click', function() {
+      var pass = document.getElementById('modal-pass-value').textContent.trim();
+      var fullText = 'Usuario: {{ modal_usuario }}\nContrasena: ' + pass;
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(fullText).then(function() {
+          btnCopiar.textContent = 'Copiado!';
+          setTimeout(function() { btnCopiar.textContent = 'Copiar contrasena'; }, 1500);
+        }).catch(function() {
+          fallbackCopy(fullText);
+        });
+      } else {
+        fallbackCopy(fullText);
+      }
+    });
+  }
+  function fallbackCopy(text) {
+    var ta = document.createElement('textarea');
+    ta.value = text;
+    document.body.appendChild(ta);
+    ta.select();
+    try { document.execCommand('copy'); btnCopiar.textContent = 'Copiado!'; }
+    catch (e) { btnCopiar.textContent = 'Error'; }
+    document.body.removeChild(ta);
+    setTimeout(function() { btnCopiar.textContent = 'Copiar contrasena'; }, 1500);
+  }
+})();
+</script>
+{% endif %}
+
+{% endblock %}
