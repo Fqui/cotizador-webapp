@@ -1,0 +1,73 @@
+{% extends "base.html" %}
+{% block title %}Completa tus datos — HIERRONORT{% endblock %}
+{% block content %}
+
+{% set fd = form_data or {} %}
+{% set cli = cliente or {} %}
+
+<div class="page-head">
+  <h1>Completa tus datos</h1>
+  <p class="muted">Es necesario para poder hacer pedidos. Solo lo pediremos una vez.</p>
+</div>
+
+<div class="flash flash-error" style="margin-bottom: 16px;">
+  <strong>Completa estos datos para acceder al sitio.</strong> No podes navegar ni hacer pedidos hasta llenar los 8 campos obligatorios.
+</div>
+
+{% if mensaje %}
+  <div class="flash flash-{{ 'ok' if mensaje.tipo == 'ok' else 'error' }}">{{ mensaje.texto }}</div>
+{% endif %}
+
+<form method="post" class="admin-form" style="max-width: 720px; grid-template-columns: 1fr 1fr;">
+  <label>
+    <span>Nombre / Apellido *</span>
+    <input type="text" name="nombre" value="{{ fd.nombre or cli.nombre or '' }}" required
+           style="width:100%; padding:10px 12px; border:1px solid #d1d5db; border-radius:6px; font-size:14px; box-sizing:border-box; font-family:inherit;">
+  </label>
+  <label>
+    <span>Razon social *</span>
+    <input type="text" name="razon_social" value="{{ fd.razon_social or cli.razon_social or '' }}" required
+           style="width:100%; padding:10px 12px; border:1px solid #d1d5db; border-radius:6px; font-size:14px; box-sizing:border-box; font-family:inherit;">
+  </label>
+  <label>
+    <span>CUIT *</span>
+    <input type="text" name="cuit" value="{{ fd.cuit or cli.cuit or '' }}" required placeholder="20-12345678-9"
+           style="width:100%; padding:10px 12px; border:1px solid #d1d5db; border-radius:6px; font-size:14px; box-sizing:border-box; font-family:inherit;">
+  </label>
+  <label>
+    <span>Email *</span>
+    <input type="email" name="email" value="{{ fd.email or cli.email or '' }}" required
+           style="width:100%; padding:10px 12px; border:1px solid #d1d5db; border-radius:6px; font-size:14px; box-sizing:border-box; font-family:inherit;">
+  </label>
+  <label>
+    <span>Telefono *</span>
+    <input type="tel" name="telefono" value="{{ fd.telefono or cli.telefono or '' }}" required
+           style="width:100%; padding:10px 12px; border:1px solid #d1d5db; border-radius:6px; font-size:14px; box-sizing:border-box; font-family:inherit;">
+  </label>
+  <label>
+    <span>Localidad *</span>
+    <input type="text" name="localidad" value="{{ fd.localidad or cli.localidad or '' }}" required
+           style="width:100%; padding:10px 12px; border:1px solid #d1d5db; border-radius:6px; font-size:14px; box-sizing:border-box; font-family:inherit;">
+  </label>
+  <label>
+    <span>Tipo de cliente *</span>
+    <select name="tipo_cliente" required
+            style="width:100%; padding:10px 12px; border:1px solid #d1d5db; border-radius:6px; font-size:14px; box-sizing:border-box; font-family:inherit; background:#fff;">
+      <option value="">— Seleccionar —</option>
+      <option value="responsable_inscripto" {% if (fd.tipo_cliente or cli.tipo_cliente) == 'responsable_inscripto' %}selected{% endif %}>Responsable Inscripto</option>
+      <option value="monotributo" {% if (fd.tipo_cliente or cli.tipo_cliente) == 'monotributo' %}selected{% endif %}>Monotributista</option>
+      <option value="consumidor_final" {% if (fd.tipo_cliente or cli.tipo_cliente) == 'consumidor_final' %}selected{% endif %}>Consumidor Final</option>
+      <option value="exento" {% if (fd.tipo_cliente or cli.tipo_cliente) == 'exento' %}selected{% endif %}>Exento</option>
+    </select>
+  </label>
+  <label style="grid-column: 1 / -1;">
+    <span>Direccion *</span>
+    <input type="text" name="direccion" value="{{ fd.direccion or cli.direccion or '' }}" required placeholder="Calle 123, Ciudad, Provincia"
+           style="width:100%; padding:10px 12px; border:1px solid #d1d5db; border-radius:6px; font-size:14px; box-sizing:border-box; font-family:inherit;">
+  </label>
+  <div style="grid-column: 1 / -1; text-align: right;">
+    <button type="submit" class="btn btn-primary">Guardar y continuar</button>
+  </div>
+</form>
+
+{% endblock %}
