@@ -1,0 +1,44 @@
+{% extends "base.html" %}
+{% block title %}Cliente creado — Admin{% endblock %}
+{% block content %}
+
+<div class="page-head">
+  <a href="{{ url_for('admin_clientes') }}" class="back">← Clientes</a>
+  <h1>Cliente creado</h1>
+</div>
+
+<div class="device-card" style="max-width: 600px;">
+  <div class="device-section" style="background: var(--green-light, #edfaf2); border-color: var(--green, #27ae60); color: #1a6e3e;">
+    <h3 style="color: #1a6e3e;">Listo</h3>
+    <p style="color: var(--text, #1a1a1a);">
+      <strong>{{ cliente.nombre }}</strong> fue creado. Usuario:
+      <code style="background: #fff; padding: 2px 6px; border-radius: 4px; color: #1a1a1a;">{{ cliente.usuario }}</code>
+    </p>
+  </div>
+
+  <div class="device-section">
+    <h3>Contrasena (mostrar UNA sola vez)</h3>
+    <p style="color: var(--accent, #c0392b); font-size: 13px; margin-bottom: 12px;">
+      <strong>Importante:</strong> copia esta contrasena y enviasela al cliente por WhatsApp.
+      No la vamos a mostrar de nuevo.
+    </p>
+    <div style="background: #fff; border: 2px dashed var(--accent, #c0392b); padding: 16px; text-align: center; border-radius: 8px;">
+      <span style="font-family: 'JetBrains Mono', 'Consolas', monospace; font-size: 32px; font-weight: 700; color: var(--accent, #c0392b); letter-spacing: 4px;">{{ pass_plain }}</span>
+    </div>
+  </div>
+
+  <div class="device-section">
+    <h3>Proximos pasos</h3>
+    <ol style="margin-left: 20px; color: var(--text); font-size: 14px; line-height: 1.6;">
+      <li>Copia la contrasena y enviasela al cliente por WhatsApp.</li>
+      <li>Pedile al cliente que entre a la web y complete sus datos personales (CUIT, direccion, email, etc.) desde Mi Cuenta.</li>
+      <li>Cuando haga su primer login, se le asignara automaticamente un device.</li>
+    </ol>
+  </div>
+
+  <div class="device-section">
+    <a href="{{ url_for('admin_clientes') }}" class="btn btn-primary">← Volver a clientes</a>
+  </div>
+</div>
+
+{% endblock %}
