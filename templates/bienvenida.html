@@ -1,0 +1,53 @@
+{% extends "base.html" %}
+{% block title %}Bienvenida — HIERRONORT{% endblock %}
+{% block content %}
+
+{% set fd = form_data or {} %}
+{% set cli = cliente or {} %}
+
+<div class="bienvenida-overlay">
+  <div class="bienvenida-modal">
+    <h1>Bienvenido a HIERRONORT</h1>
+    <p class="muted">Antes de empezar, necesitamos que completes estos datos. Son obligatorios y no se pueden cambiar despues desde este lugar.</p>
+
+    {% if mensaje %}
+      <div class="flash flash-error">{{ mensaje.texto }}</div>
+    {% endif %}
+
+    <form method="post" class="admin-form" style="grid-template-columns: 1fr 1fr;">
+      <label>
+        <span>Nombre / Apellido *</span>
+        <input type="text" name="nombre" value="{{ fd.nombre or cli.nombre or '' }}" required autofocus>
+      </label>
+      <label>
+        <span>Razon social *</span>
+        <input type="text" name="razon_social" value="{{ fd.razon_social or cli.razon_social or '' }}" required>
+      </label>
+      <label>
+        <span>CUIT *</span>
+        <input type="text" name="cuit" value="{{ fd.cuit or cli.cuit or '' }}" required placeholder="20-12345678-9">
+      </label>
+      <label>
+        <span>Email *</span>
+        <input type="email" name="email" value="{{ fd.email or cli.email or '' }}" required>
+      </label>
+      <label>
+        <span>Telefono *</span>
+        <input type="tel" name="telefono" value="{{ fd.telefono or cli.telefono or '' }}" required placeholder="+54 11 4000-0000">
+      </label>
+      <label>
+        <span>Localidad *</span>
+        <input type="text" name="localidad" value="{{ fd.localidad or cli.localidad or '' }}" required>
+      </label>
+      <label style="grid-column: 1 / -1;">
+        <span>Direccion *</span>
+        <input type="text" name="direccion" value="{{ fd.direccion or cli.direccion or '' }}" required placeholder="Calle 123, Ciudad, Provincia">
+      </label>
+      <div style="grid-column: 1 / -1;">
+        <button type="submit" class="btn btn-primary">Guardar y entrar</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+{% endblock %}
