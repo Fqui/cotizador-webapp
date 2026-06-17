@@ -1,0 +1,85 @@
+{% extends "base.html" %}
+{% block title %}Buscar cliente — Admin HIERRONORT{% endblock %}
+{% block content %}
+
+<div class="page-head">
+  <a href="{{ url_for('admin') }}" class="back">← Admin</a>
+  <h1>Buscar cliente</h1>
+  <p class="muted">Por nombre, cod_cliente, usuario, CUIT, razon_social o localidad.</p>
+</div>
+
+<form method="get" action="{{ url_for('admin_buscar') }}" class="buscar-form" id="buscar-form">
+  <input type="search" name="q" id="buscar-input" value="{{ q }}"
+         placeholder="Buscar cliente..." autocomplete="off"
+         autofocus>
+  <div class="buscar-hint">
+    <span><kbd>Enter</kbd> buscar</span>
+    <span><kbd>Esc</kbd> limpiar</span>
+  </div>
+</form>
+
+{% if q %}
+  {% if resultados %}
+    <div class="buscar-results">
+      <p class="muted">{{ resultados|length }} resultado{{ '' if resultados|length == 1 else 's' }} para "{{ q }}"</p>
+      {% for r in resultados %}
+        <a class="buscar-row" href="{{ url_for('admin_cliente_ficha', cid=r.id) }}">
+          <div class="buscar-row-main">
+            <strong>{{ r.nombre or '—' }}</strong>
+            <span class="muted">{{ r.localidad or '—' }}</span>
+            {% if r.device_token %}
+              <span class="badge adn">Device</span>
+            {% else %}
+              <span class="badge pendiente">Sin device</span>
+            {% endif %}
+          </div>
+          <div class="buscar-row-meta">
+            {% if r.cod_cliente %}<span class="cod-chip mono">{{ r.cod_cliente }}</span>{% endif %}
+            <span class="muted">usuario: {{ r.usuario }}</span>
+            {% if r.cuit %}<span class="muted">CUIT {{ r.cuit }}</span>{% endif %}
+            {% if r.tipo_cliente %}<span class="muted">{{ r.tipo_cliente }}</span>{% endif %}
+            {% if not r.activo %}<span class="badge vencida">Inactivo</span>{% endif %}
+          </div>
+        </a>
+      {% endfor %}
+    </div>
+  {% else %}
+    <div class="empty">
+      <div class="art" aria-hidden="true">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+          <line x1="8" y1="11" x2="14" y2="11"/>
+        </svg>
+      </div>
+      <h3>Sin resultados</h3>
+      <p>No encontramos clientes para "<strong>{{ q }}</strong>". Probá otro término.</p>
+    </div>
+  {% endif %}
+{% else %}
+  <div class="empty">
+    <div class="art" aria-hidden="true">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+      </svg>
+    </div>
+    <h3>Busca un cliente</h3>
+    <p>Por nombre, cod, usuario, CUIT, razon_social o localidad.</p>
+  </div>
+{% endif %}
+
+<script>
+(function() {
+  var input = document.getElementById('buscar-input');
+  if (input) {
+    // Esc limpia el input y submitea (vuelve a estado vacio)
+    input.addEventListener('keydown', function(e) {
+      if (e.key === 'Escape') {
+        input.value = '';
+        input.form.submit();
+      }
+    });
+  }
+})();
+</script>
+
+{% endblock %}
