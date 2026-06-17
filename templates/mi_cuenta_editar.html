@@ -1,0 +1,54 @@
+{% extends "base.html" %}
+{% block title %}Editar mis datos — HIERRONORT{% endblock %}
+{% block content %}
+
+<div class="page-head">
+  <a href="{{ url_for('mi_cuenta') }}" class="back">← Mi Cuenta</a>
+  <h1>Editar mis datos</h1>
+  <p class="muted">Completa tus datos personales. Los pedidos requieren nombre, razon social, CUIT, direccion, localidad, telefono y email.</p>
+</div>
+
+{% with msgs = get_flashed_messages(with_categories=true) %}
+  {% if msgs %}
+    {% for cat, msg in msgs %}
+      <div class="flash flash-{{ 'ok' if cat == 'ok' else 'error' }}">{{ msg }}</div>
+    {% endfor %}
+  {% endif %}
+{% endwith %}
+
+<form method="post" class="admin-form" style="grid-template-columns: 1fr 1fr; max-width: 720px;">
+  <label>
+    <span>Nombre <span class="req">*</span></span>
+    <input type="text" name="nombre" value="{{ cliente.nombre or '' }}" required>
+  </label>
+  <label>
+    <span>Razon social</span>
+    <input type="text" name="razon_social" value="{{ cliente.razon_social or '' }}">
+  </label>
+  <label>
+    <span>CUIT</span>
+    <input type="text" name="cuit" value="{{ cliente.cuit or '' }}" placeholder="30-12345678-9" pattern="[0-9]{2}-[0-9]{8}-[0-9]{1}">
+  </label>
+  <label>
+    <span>Email</span>
+    <input type="email" name="email" value="{{ cliente.email or '' }}">
+  </label>
+  <label>
+    <span>Telefono</span>
+    <input type="text" name="telefono" value="{{ cliente.telefono or '' }}">
+  </label>
+  <label>
+    <span>Localidad</span>
+    <input type="text" name="localidad" value="{{ cliente.localidad or '' }}">
+  </label>
+  <label style="grid-column: 1 / -1;">
+    <span>Direccion</span>
+    <input type="text" name="direccion" value="{{ cliente.direccion or '' }}">
+  </label>
+  <div style="grid-column: 1 / -1; display:flex; gap:8px;">
+    <button type="submit" class="btn btn-primary">Guardar</button>
+    <a href="{{ url_for('mi_cuenta') }}" class="btn btn-secondary">Cancelar</a>
+  </div>
+</form>
+
+{% endblock %}
