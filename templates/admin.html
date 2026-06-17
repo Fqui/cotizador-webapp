@@ -1,0 +1,174 @@
+{% extends "base.html" %}
+{% block title %}Admin — HIERRONORT{% endblock %}
+{% block content %}
+
+<div class="dashboard-v2">
+  <div class="page-head">
+    <div class="page-head-left">
+      <h1>Panel de administración</h1>
+      <p>Vista general del sistema · Acceso rápido a herramientas</p>
+    </div>
+  </div>
+
+  {# === STATS (8 cards: 5 originales + 3 nuevas de ventas) === #}
+  <div class="dashboard-stats">
+    <div class="stat top-primary">
+      <div class="stat-label">Clientes activos</div>
+      <div class="stat-value">{{ n_activos }}</div>
+      <div class="stat-delta muted">No-admin con activo=1</div>
+    </div>
+
+    <div class="stat top-warn">
+      <div class="stat-label">Pedidos pendientes</div>
+      <div class="stat-value">{{ n_pendientes }}</div>
+      <div class="stat-delta {% if n_pendientes_24h > 0 %}warn{% endif %}">
+        {% if n_pendientes_24h > 0 %}{{ n_pendientes_24h }} con más de 24h{% else %}Al día{% endif %}
+      </div>
+    </div>
+
+    <div class="stat top-info">
+      <div class="stat-label">Kilos / Toneladas vendidas</div>
+      <div class="stat-value">{{ "%.3f"|format(toneladas_total) }} t</div>
+      <div class="stat-delta muted">{{ "{:,.0f}".format(kilos_total).replace(",", ".") }} kg acumulado</div>
+    </div>
+
+    <div class="stat top-warn">
+      <div class="stat-label">Datos incompletos</div>
+      <div class="stat-value">{{ n_datos_inc }}</div>
+      <div class="stat-delta {% if n_datos_inc > 0 %}warn{% endif %}">Requieren atención</div>
+    </div>
+
+    <div class="stat top-primary">
+      <div class="stat-label">Productos</div>
+      <div class="stat-value">{{ "{:,}".format(n_productos).replace(",", ".") }}</div>
+      <div class="stat-delta muted">En lista de precios</div>
+    </div>
+
+    {# --- 3 nuevas: ventas --- #}
+    <div class="stat top-primary">
+      <div class="stat-label">Facturado este mes</div>
+      <div class="stat-value">$ {{ "{:,.0f}".format(fact_mes_actual).replace(",", ".") }}</div>
+      <div class="stat-delta {% if fact_var > 0 %}ok{% elif fact_var < 0 %}warn{% else %}muted{% endif %}">
+        {% if fact_var > 0 %}+{{ fact_var }}% vs mes anterior
+        {% elif fact_var < 0 %}{{ fact_var }}% vs mes anterior
+        {% else %}— sin mes anterior
+        {% endif %}
+      </div>
+    </div>
+
+    <div class="stat top-ok">
+      <div class="stat-label">Cobrado este mes</div>
+      <div class="stat-value">$ {{ "{:,.0f}".format(cobr_mes_actual).replace(",", ".") }}</div>
+      <div class="stat-delta {% if cobr_var > 0 %}ok{% elif cobr_var < 0 %}warn{% else %}muted{% endif %}">
+        {% if cobr_var > 0 %}+{{ cobr_var }}% vs mes anterior
+        {% elif cobr_var < 0 %}{{ cobr_var }}% vs mes anterior
+        {% else %}— sin mes anterior
+        {% endif %}
+      </div>
+    </div>
+
+    <div class="stat top-warn">
+      <div class="stat-label">Pendiente de cobro</div>
+      <div class="stat-value">$ {{ "{:,.0f}".format(pend_cobro_total).replace(",", ".") }}</div>
+      <div class="stat-delta {% if pend_cobro_count > 0 %}warn{% else %}ok{% endif %}">
+        {{ pend_cobro_count }} pedido{{ '' if pend_cobro_count == 1 else 's' }} con saldo
+      </div>
+    </div>
+  </div>
+
+  {# === MIDDLE: atajos + pedidos pendientes === #}
+  <div class="dashboard-middle">
+    <div class="atajos">
+      <a class="atajo" href="{{ url_for('admin_clientes') }}?modal=nuevo" data-modal-open="nuevo-cliente">
+        <div class="atajo-icon red">+</div>
+        <div class="atajo-text"><h3>Nuevo cliente</h3><p>Crear usuario</p></div>
+      </a>
+      <a class="atajo" href="{{ url_for('admin_pedidos') }}">
+        <div class="atajo-icon orange">▤</div>
+        <div class="atajo-text"><h3>Pedidos</h3><p>{{ n_pendientes }} pendientes</p></div>
+        {% if n_pendientes %}<div class="atajo-badge">{{ n_pendientes }}</div>{% endif %}
+      </a>
+      <a class="atajo" href="{{ url_for('admin_clientes') }}">
+        <div class="atajo-icon green">⌕</div>
+        <div class="atajo-text"><h3>Buscar cliente</h3><p>CUIT / nombre</p></div>
+      </a>
+      <a class="atajo" href="{{ url_for('admin_pagos_pendientes') }}">
+        <div class="atajo-icon orange">$</div>
+        <div class="atajo-text"><h3>Pagos</h3><p>Aprobar / rechazar comprobantes</p></div>
+        {% if n_pagos_pendientes %}<div class="atajo-badge">{{ n_pagos_pendientes }}</div>{% endif %}
+      </a>
+      <a class="atajo" href="{{ url_for('admin_facturas') }}">
+        <div class="atajo-icon blue">≡</div>
+        <div class="atajo-text"><h3>Facturas</h3><p>Historial de emisiones</p></div>
+      </a>
+    </div>
+
+    <div class="section">
+      <div class="section-head">
+        <div class="section-title">
+          Pedidos pendientes
+          <span class="count {% if n_pendientes_24h > 0 %}critical{% endif %}">{{ n_pendientes }}</span>
+        </div>
+        <a href="{{ url_for('admin_pedidos') }}" class="ver-todos">Ver todos →</a>
+      </div>
+      <table class="pedido-table">
+        <thead>
+          <tr><th>Cliente</th><th>Items</th><th class="r">Total</th><th>Estado</th><th></th></tr>
+        </thead>
+        <tbody>
+          {% for p in pedidos %}
+            <tr>
+              <td><div class="pedido-cliente"><strong>{{ p.cliente_nombre }}</strong><small>{{ p.edad_texto }}</small></div></td>
+              <td class="pedido-items">{{ p.items_resumen or '—' }}</td>
+              <td class="r pedido-total">{{ fmt(p.total) }}</td>
+              <td><span class="estado-tag estado-pendiente">Pendiente</span></td>
+              <td><a href="{{ url_for('admin_pedidos') }}#{{ p.nro }}" class="btn-revisar">Revisar</a></td>
+            </tr>
+          {% else %}
+            <tr><td colspan="5" class="muted" style="text-align:center; padding:16px;">No hay pedidos pendientes.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  {# === BOTTOM: actividad + info panel === #}
+  <div class="dashboard-bottom">
+    <div class="section">
+      <div class="section-head">
+        <div class="section-title">Actividad reciente</div>
+      </div>
+      <div class="logs">
+        {% if actividad %}
+          <div class="log log-head"><div>Cuándo</div><div>Qué pasó</div><div>Tipo</div></div>
+          {% for a in actividad[:7] %}
+            <div class="log">
+              <div class="log-ts">{{ a.ts }}</div>
+              <div class="log-msg">{{ a.texto | safe }}</div>
+              <div><span class="log-badge badge-{{ a.tipo }}">{{ a.tipo }}</span></div>
+            </div>
+          {% endfor %}
+        {% else %}
+          <div class="empty" style="padding:16px;">Sin actividad reciente.</div>
+        {% endif %}
+      </div>
+    </div>
+
+    <div class="info-panel">
+      <div class="info-card">
+        <h3>Estado del sistema</h3>
+        <div class="info-row"><span class="label">Webapp</span><span class="value ok">● En línea</span></div>
+        <div class="info-row"><span class="label">Base de datos</span><span class="value ok">● OK</span></div>
+        <div class="info-row"><span class="label">Pedidos pendientes</span><span class="value {% if n_pendientes_24h > 0 %}danger{% else %}ok{% endif %}">{{ n_pendientes }}</span></div>
+      </div>
+      <div class="info-card">
+        <h3>Alertas</h3>
+        <div class="info-row"><span class="label">Pedidos +24h</span><span class="value {% if n_pendientes_24h > 0 %}danger{% else %}ok{% endif %}">{{ n_pendientes_24h }}</span></div>
+        <div class="info-row"><span class="label">Datos incompletos</span><span class="value {% if n_datos_inc > 0 %}warn{% else %}ok{% endif %}">{{ n_datos_inc }}</span></div>
+        <div class="info-row"><span class="label">Total clientes</span><span class="value">{{ n_activos }}</span></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+{% endblock %}
