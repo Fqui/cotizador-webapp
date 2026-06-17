@@ -1,0 +1,83 @@
+{% extends "base.html" %}
+{% block title %}Device de {{ cliente.nombre }} — Admin{% endblock %}
+{% block content %}
+
+<div class="page-head">
+  <a href="{{ url_for('admin_clientes') }}" class="back">← Clientes</a>
+  <h1>Device vinculado</h1>
+  <p>{{ cliente.nombre }} ({{ cliente.cod_cliente or '—' }}) · usuario <code>{{ cliente.usuario }}</code></p>
+</div>
+
+{% with messages = get_flashed_messages(with_categories=true) %}
+  {% if messages %}
+    {% for category, msg in messages %}
+      <div class="flash flash-{{ 'ok' if category == 'ok' else 'error' }}">{{ msg }}</div>
+    {% endfor %}
+  {% endif %}
+{% endwith %}
+
+<div class="device-card">
+  <div class="device-section">
+    <h3>Estado</h3>
+    {% if cliente.is_admin %}
+      <div class="device-state device-state-on">
+        <span class="dot"></span>
+        <div>
+          <strong>Admin</strong>
+          <p>El admin no se ve afectado por device-binding. Puede entrar desde cualquier dispositivo.</p>
+        </div>
+      </div>
+    {% elif cliente.device_token %}
+      <div class="device-state device-state-on">
+        <span class="dot"></span>
+        <div>
+          <strong>Vinculado</strong>
+          <p>Este cliente solo puede entrar desde este dispositivo. Si quiere entrar desde otro, hay que revocar el device acá.</p>
+        </div>
+      </div>
+    {% else %}
+      <div class="device-state device-state-off">
+        <span class="dot"></span>
+        <div>
+          <strong>Sin device</strong>
+          <p>El cliente aún no hizo su primer login. Cuando entre, se va a vincular automáticamente a ese dispositivo.</p>
+        </div>
+      </div>
+    {% endif %}
+  </div>
+
+  <div class="device-section">
+    <h3>Detalles del dispositivo</h3>
+    <div class="device-grid">
+      <div>
+        <span class="lbl">Etiqueta (user-agent)</span>
+        <span class="val">{{ cliente.device_label or '—' }}</span>
+      </div>
+      <div>
+        <span class="lbl">Primer login</span>
+        <span class="val">{{ cliente.device_first_login or '—' }}</span>
+      </div>
+      <div>
+        <span class="lbl">Último login</span>
+        <span class="val">{{ cliente.device_last_login or '—' }}</span>
+      </div>
+      <div>
+        <span class="lbl">Token</span>
+        <span class="val mono small">{{ cliente.device_token or '— (sin token)' }}</span>
+      </div>
+    </div>
+  </div>
+
+  {% if not cliente.is_admin and cliente.device_token %}
+    <div class="device-section device-danger">
+      <h3>Revocar device</h3>
+      <p>Si el cliente quiere entrar desde otro dispositivo (cambió la PC, se le rompió, etc.), revocalo. En su próximo login se va a vincular al nuevo dispositivo automáticamente.</p>
+      <form method="post" action="{{ url_for('admin_cliente_device_revoke', cid=cliente.id) }}"
+            onsubmit="return confirm('¿Revocar el device de {{ cliente.usuario }}?\n\nEl cliente tendrá que volver a vincular su próximo dispositivo.');">
+        <button type="submit" class="btn btn-danger">Revocar device</button>
+      </form>
+    </div>
+  {% endif %}
+</div>
+
+{% endblock %}
