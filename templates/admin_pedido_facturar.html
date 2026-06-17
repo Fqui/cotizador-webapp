@@ -1,0 +1,80 @@
+{% extends "base.html" %}
+{% block title %}Facturar pedido {{ nro }} — Admin HIERRONORT{% endblock %}
+{% block content %}
+
+<div class="dashboard-v2">
+  <div class="page-head">
+    <div class="page-head-left">
+      <a href="{{ url_for('admin_pedidos', f='pendientes') }}" style="font-size:12px; color:var(--v2-muted); text-decoration:none;">← Pedidos pendientes</a>
+      <h1>Facturar pedido <span class="muted" style="font-family:monospace; font-size:14px;">{{ nro }}</span></h1>
+      <p>{{ cliente_nombre }} · Total: <strong>{{ fmt(total) }}</strong></p>
+    </div>
+  </div>
+
+  {% with msgs = get_flashed_messages(with_categories=true) %}
+    {% if msgs %}
+      {% for cat, msg in msgs %}
+        <div class="flash flash-{{ 'ok' if cat == 'ok' else 'error' }}"
+             style="background:{{ '#d1fae5' if cat == 'ok' else '#fee2e2' }}; color:{{ '#065f46' if cat == 'ok' else '#991b1b' }}; padding:10px 14px; border-radius:7px; margin-bottom:12px; font-size:13px; font-weight:600;">
+          {{ msg }}
+        </div>
+      {% endfor %}
+    {% endif %}
+  {% endwith %}
+
+  <form method="post" enctype="multipart/form-data" style="max-width:560px;">
+    <div class="section">
+      <div class="section-head">
+        <div class="section-title">Datos de la factura</div>
+      </div>
+        <div style="padding:18px 20px;">
+        <div style="margin-bottom:16px;">
+          <label style="display:block; font-size:12px; font-weight:700; color:var(--v2-muted); text-transform:uppercase; letter-spacing:0.5px; margin-bottom:6px;">
+            Numero de factura <span style="color:var(--v2-primary);">*</span>
+          </label>
+          <input type="text" name="nro_factura" value="{{ nro_factura_sugerido }}" required autofocus
+                 placeholder="Ej: FC-1234-00001"
+                 style="width:100%; padding:10px 12px; border:1px solid var(--v2-border); border-radius:7px; font-size:14px; font-family:monospace; box-sizing:border-box;">
+          {% if nro_factura_sugerido %}
+            <small style="display:block; margin-top:6px; color:var(--v2-muted); font-size:12px;">
+              Sugerencia basada en la ultima factura del sistema.
+            </small>
+          {% endif %}
+        </div>
+
+        <div style="margin-bottom:16px;">
+          <label style="display:block; font-size:12px; font-weight:700; color:var(--v2-muted); text-transform:uppercase; letter-spacing:0.5px; margin-bottom:6px;">
+            PDF de la factura <span style="font-weight:400; text-transform:none;">(opcional pero recomendado)</span>
+          </label>
+          <input type="file" name="factura_pdf" accept="application/pdf,.pdf"
+                 style="width:100%; padding:8px 10px; border:1px solid var(--v2-border); border-radius:7px; font-size:13px; box-sizing:border-box; background:#fff;">
+          <small style="display:block; margin-top:6px; color:var(--v2-muted); font-size:12px;">
+            El cliente descargara este PDF desde su cuenta. Max 2MB. Si no subes nada, queda el PDF automatico del alta.
+          </small>
+        </div>
+
+        <div style="background:#f0f2f5; border-radius:8px; padding:12px 14px; font-size:13px; color:var(--v2-fg);">
+          <div style="display:flex; justify-content:space-between; margin-bottom:4px;">
+            <span style="color:var(--v2-muted);">Pedido</span>
+            <strong style="font-family:monospace;">{{ nro }}</strong>
+          </div>
+          <div style="display:flex; justify-content:space-between; margin-bottom:4px;">
+            <span style="color:var(--v2-muted);">Cliente</span>
+            <strong>{{ cliente_nombre }}</strong>
+          </div>
+          <div style="display:flex; justify-content:space-between;">
+            <span style="color:var(--v2-muted);">Total a facturar</span>
+            <strong style="color:var(--v2-primary);">{{ fmt(total) }}</strong>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div style="display:flex; gap:10px; justify-content:flex-end; margin-top:14px;">
+      <a href="{{ url_for('admin_pedidos', f='pendientes') }}" class="btn-accion btn-outline" style="text-decoration:none; color:var(--v2-muted);">← Cancelar</a>
+      <button type="submit" class="btn-accion btn-green" style="border:none;">✓ Facturar pedido</button>
+    </div>
+  </form>
+</div>
+
+{% endblock %}
