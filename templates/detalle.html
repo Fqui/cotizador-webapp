@@ -1,0 +1,194 @@
+{% extends "base.html" %}
+{% block title %}{{ p.desc }} — HIERRONORT{% endblock %}
+{% block content %}
+
+{% set uv_text = 'kilo' if p.unidad_venta == 'kg' else p.unidad_venta %}
+{% set uv_per = '/kg' if p.unidad_venta == 'kg' else ('/m' if p.unidad_venta == 'metro' else '') %}
+
+<div class="detalle-2cols">
+  {# ============ COLUMNA IZQUIERDA: imagen/placeholder ============ #}
+  <div class="detalle-img-col">
+    <div class="detalle-image" aria-hidden="true">
+      <div class="placeholder">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+          <rect x="3" y="3" width="18" height="18" rx="2"/>
+          <circle cx="8.5" cy="8.5" r="1.5"/>
+          <polyline points="21 15 16 10 5 21"/>
+        </svg>
+        <p>Sin imagen</p>
+        <p class="num">{{ p.cod }}</p>
+      </div>
+    </div>
+  </div>
+
+  {# ============ COLUMNA DERECHA: info densa ============ #}
+  <div class="detalle-info-col">
+    <a href="{{ url_for('productos_por_categoria', slug_grupo=p.slug_grupo, slug_categoria=p.slug_categoria) }}" class="back">← Volver</a>
+
+    <h1>{{ p.desc }}</h1>
+
+    <div class="detalle-cod-row">
+      <span class="cod-chip mono">{{ p.cod }}</span>
+      <span class="variant-tag {{ uv_text }}">Por {{ uv_text }}</span>
+    </div>
+
+    <div class="detalle-precio-row">
+      <span class="detalle-precio-valor">{{ fmt(p.precio_final) }}{% if p.largo_default and p.largo_default > 1 %} /m{% endif %}</span>
+      <span class="detalle-precio-suffix">{% if p.largo_default and p.largo_default > 1 %}equiv. barra {{ p.largo_default|int }}m: {{ fmt(p.precio_final * p.largo_default) }}{% else %}{{ uv_per }} por {{ uv_text }}{% endif %}</span>
+    </div>
+
+    {# ============ SETTERS (segun tipo) ============ #}
+    <div class="detalle-steppers">
+      {% if p.unidad_venta == 'metro' %}
+        <div class="stepper-group">
+          <label for="largo">Largo</label>
+          <div class="stepper-wrap">
+            <div class="stepper">
+              <button type="button" data-step="largo" data-delta="-0.5">−</button>
+              <input type="number" id="largo" value="2.00" min="0.50" max="13.00" step="0.50" inputmode="decimal">
+              <button type="button" data-step="largo" data-delta="0.5">+</button>
+            </div>
+            <span class="suffix">m</span>
+          </div>
+        </div>
+        <div class="stepper-group">
+          <label for="cantidad">Piezas</label>
+          <div class="stepper-wrap">
+            <div class="stepper">
+              <button type="button" data-step="cantidad" data-delta="-1">−</button>
+              <input type="number" id="cantidad" value="1" min="1" step="1" inputmode="numeric">
+              <button type="button" data-step="cantidad" data-delta="1">+</button>
+            </div>
+            <span class="suffix">u</span>
+          </div>
+        </div>
+      {% elif p.unidad_venta == 'kg' %}
+        <div class="stepper-group">
+          <label for="kilos">Kilos</label>
+          <div class="stepper-wrap">
+            <div class="stepper">
+              <button type="button" data-step="kilos" data-delta="-0.5">−</button>
+              <input type="number" id="kilos" value="1" min="0.5" step="0.5" inputmode="decimal">
+              <button type="button" data-step="kilos" data-delta="0.5">+</button>
+            </div>
+            <span class="suffix">kg</span>
+          </div>
+        </div>
+      {% else %}
+        <div class="stepper-group">
+          <label for="cantidad">Cantidad</label>
+          <div class="stepper-wrap">
+            <div class="stepper">
+              <button type="button" data-step="cantidad" data-delta="-1">−</button>
+              <input type="number" id="cantidad" value="1" min="1" step="1" inputmode="numeric">
+              <button type="button" data-step="cantidad" data-delta="1">+</button>
+            </div>
+            <span class="suffix">u</span>
+          </div>
+        </div>
+      {% endif %}
+    </div>
+
+    {# ============ SUBTOTAL EN VIVO ============ #}
+    <div class="live-subtotal">
+      <div>
+        <div class="label">Subtotal</div>
+        <div class="formula" id="formula">—</div>
+      </div>
+      <div class="value mono" id="subtotal">$ 0,00</div>
+    </div>
+
+    {# ============ ACCIONES ============ #}
+    <div class="detalle-actions">
+      <button class="btn btn-primary btn-add-cart" id="btn-add-cart">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18">
+          <circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/>
+          <path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/>
+        </svg>
+        Agregar al carrito
+      </button>
+    </div>
+  </div>
+</div>
+
+{% endblock %}
+{% block scripts %}
+<script>
+  (function() {
+    const PRECIO = {{ p.precio_final }};
+    const UV = "{{ p.unidad_venta }}";
+    const COD = "{{ p.cod|e }}";
+    const DESC = {{ p.desc|tojson }};
+    const TIPO = "{{ p.tipo }}";
+    const LARGO = {{ p.largo_default or 0 }};
+
+    const elSubtotal = document.getElementById('subtotal');
+    const elFormula = document.getElementById('formula');
+
+    function factor() {
+      if (UV === 'metro') {
+        const l = parseFloat(document.getElementById('largo').value) || 0;
+        const c = parseInt(document.getElementById('cantidad').value, 10) || 0;
+        return { f: l * c, detalle: `${l.toFixed(2).replace('.', ',')} m × ${c} u`, suf: '/m' };
+      } else if (UV === 'kg') {
+        const k = parseFloat(document.getElementById('kilos').value) || 0;
+        return { f: k, detalle: `${k.toString().replace('.', ',')} kg`, suf: '/kg' };
+      } else {
+        // Si el producto viene por metro (largo_default > 1, ej: Perfiles C 12m),
+        // el stepper es por unidades (1=1 barra=12m) y el subtotal = unidades * 12 * precio/metro.
+        const c = parseInt(document.getElementById('cantidad').value, 10) || 1;
+        if (LARGO && LARGO > 1) {
+          const totalM = c * LARGO;
+          return { f: c * LARGO, detalle: `${c} u × ${LARGO} m = ${totalM} m`, suf: '/m' };
+        }
+        return { f: c, detalle: `${c} u`, suf: '' };
+      }
+    }
+
+    function recalc() {
+      const { f, detalle, suf } = factor();
+      const total = PRECIO * f;
+      elSubtotal.textContent = formatMoney(total);
+      elFormula.textContent = `${detalle} × ${formatMoney(PRECIO)}${suf} = ${formatMoney(total)}`;
+    }
+
+    document.querySelectorAll('.stepper button[data-step]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const id = btn.dataset.step;
+        const delta = parseFloat(btn.dataset.delta);
+        const inp = document.getElementById(id);
+        const step = parseFloat(inp.step) || 1;
+        const min = parseFloat(inp.min);
+        const max = parseFloat(inp.max);
+        let val = parseFloat(inp.value) + delta;
+        if (isNaN(val)) val = min;
+        val = Math.round(val / step) * step;
+        val = Math.max(min, Math.min(max || Infinity, val));
+        inp.value = id === 'cantidad' ? Math.round(val) : val.toFixed(2);
+        recalc();
+      });
+    });
+    document.querySelectorAll('.stepper input').forEach(inp => {
+      inp.addEventListener('input', recalc);
+    });
+    recalc();
+
+    document.getElementById('btn-add-cart').addEventListener('click', () => {
+      const item = {
+        cod: COD, desc: DESC, precio_por: PRECIO, tipo: TIPO, unidad_venta: UV,
+        largo_default: LARGO,
+      };
+      if (UV === 'metro') {
+        item.largo = parseFloat(document.getElementById('largo').value) || 0;
+        item.cantidad = parseInt(document.getElementById('cantidad').value, 10) || 1;
+      } else if (UV === 'kg') {
+        item.kilos = parseFloat(document.getElementById('kilos').value) || 0;
+        item.cantidad = item.kilos;
+      } else {
+        item.cantidad = parseInt(document.getElementById('cantidad').value, 10) || 1;
+      }
+      agregarAlCarrito(item);
+    });
+  })();
+</script>
+{% endblock %}
