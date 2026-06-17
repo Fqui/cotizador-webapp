@@ -1,0 +1,57 @@
+{% extends "base.html" %}
+{% block title %}Rubros — HIERRONORT{% endblock %}
+{% block content %}
+
+{% if session.show_welcome_modal %}
+  {% set fd = {} %}
+  <div class="bienvenida-overlay">
+    <div class="bienvenida-modal">
+      <h1>Bienvenido a HIERRONORT</h1>
+      <p class="muted">Antes de empezar, necesitamos que completes estos datos. Son obligatorios.</p>
+      <form method="post" action="{{ url_for('bienvenida') }}" class="admin-form" style="grid-template-columns: 1fr 1fr;">
+        <label><span>Nombre / Apellido *</span><input type="text" name="nombre" required autofocus></label>
+        <label><span>Razon social *</span><input type="text" name="razon_social" required></label>
+        <label><span>CUIT *</span><input type="text" name="cuit" required placeholder="20-12345678-9"></label>
+        <label><span>Email *</span><input type="email" name="email" required></label>
+        <label><span>Telefono *</span><input type="tel" name="telefono" required placeholder="+54 11 4000-0000"></label>
+        <label><span>Localidad *</span><input type="text" name="localidad" required></label>
+        <label style="grid-column: 1 / -1;"><span>Direccion *</span><input type="text" name="direccion" required placeholder="Calle 123, Ciudad, Provincia"></label>
+        <div style="grid-column: 1 / -1;">
+          <button type="submit" class="btn btn-primary">Guardar y entrar</button>
+        </div>
+      </form>
+    </div>
+  </div>
+{% endif %}
+
+{% for grupo in grupos %}
+  <section class="grupo">
+    <h2 class="grupo-title {{ grupo.clase }}">{{ grupo.nombre }}</h2>
+    <div class="rubros-grid">
+      {% for slug_cat, nombre_cat, count, img_filename in grupo.categorias %}
+        <a class="rubro-card {{ grupo.clase }}"
+           href="{{ url_for('productos_por_categoria', slug_grupo=grupo.slug, slug_categoria=slug_cat) }}">
+          <div class="rubro-img {% if not img_filename %}rubro-img-empty{% endif %}" aria-hidden="true">
+            {% if img_filename %}
+              <img src="{{ url_for('static', filename='img/categorias/' + img_filename) }}" alt="">
+            {% else %}
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2" style="width:40px;height:40px;color:var(--muted);opacity:.5">
+                <rect x="3" y="3" width="18" height="18" rx="2"/>
+                <line x1="3" y1="9" x2="21" y2="9"/>
+                <line x1="9" y1="3" x2="9" y2="21"/>
+              </svg>
+            {% endif %}
+          </div>
+          <div class="rubro-text">
+            <div class="rubro-nombre">{{ nombre_cat }}</div>
+            <div class="rubro-count">{{ count }} producto{{ '' if count == 1 else 's' }}</div>
+          </div>
+        </a>
+      {% endfor %}
+    </div>
+  </section>
+{% else %}
+  <p>No hay rubros cargados todavía.</p>
+{% endfor %}
+
+{% endblock %}
