@@ -1,0 +1,83 @@
+{% extends "base.html" %}
+{% block title %}Cargar pago — Mi Cuenta HIERRONORT{% endblock %}
+{% block content %}
+
+<div class="dashboard-v2 mi-cuenta-v2">
+  <div class="mi-cuenta-head">
+    <div>
+      <a href="{{ url_for('mi_cuenta', tab='pagos') }}" style="font-size:12px; color:var(--v2-muted); text-decoration:none;">← Mis pagos</a>
+      <h1>Cargar comprobante de pago</h1>
+      <p class="muted">Pedido: <span class="cod-chip mono">{{ nro }}</span> · Total: <strong>{{ fmt(total) }}</strong></p>
+    </div>
+  </div>
+
+  {% with msgs = get_flashed_messages(with_categories=true) %}
+    {% if msgs %}
+      {% for cat, msg in msgs %}
+        <div class="flash flash-{{ 'ok' if cat == 'ok' else 'error' }}"
+             style="background:{{ '#d1fae5' if cat == 'ok' else '#fee2e2' }};
+                    color:{{ '#065f46' if cat == 'ok' else '#991b1b' }};
+                    padding:10px 14px; border-radius:7px; margin-bottom:12px; font-size:13px; font-weight:600;">
+          {{ msg }}
+        </div>
+      {% endfor %}
+    {% endif %}
+  {% endwith %}
+
+  <form method="post" enctype="multipart/form-data" style="max-width:560px;">
+    <input type="hidden" name="nro" value="{{ nro }}">
+
+    <div class="section">
+      <div class="section-head">
+        <div class="section-title">Datos del pago</div>
+      </div>
+      <div style="padding:18px 20px;">
+        <div style="margin-bottom:16px;">
+          <label style="display:block; font-size:12px; font-weight:700; color:var(--v2-muted); text-transform:uppercase; letter-spacing:0.5px; margin-bottom:6px;">
+            Forma de pago <span style="color:var(--v2-primary);">*</span>
+          </label>
+          <select name="metodo" required
+                  style="width:100%; padding:10px 12px; border:1px solid var(--v2-border); border-radius:7px; font-size:14px; background:#fff; box-sizing:border-box;">
+            <option value="">— Seleccionar —</option>
+            <option value="Efectivo">Efectivo</option>
+            <option value="Transferencia">Transferencia bancaria</option>
+            <option value="Cheque">Cheque</option>
+            <option value="Tarjeta">Tarjeta</option>
+            <option value="MercadoPago">MercadoPago</option>
+            <option value="Otro">Otro</option>
+          </select>
+        </div>
+
+        <div style="margin-bottom:16px;">
+          <label style="display:block; font-size:12px; font-weight:700; color:var(--v2-muted); text-transform:uppercase; letter-spacing:0.5px; margin-bottom:6px;">
+            Fecha del pago <span style="color:var(--v2-primary);">*</span>
+          </label>
+          <input type="date" name="fecha" value="{{ hoy }}" required
+                 style="width:100%; padding:10px 12px; border:1px solid var(--v2-border); border-radius:7px; font-size:14px; box-sizing:border-box;">
+        </div>
+
+        <div style="margin-bottom:16px;">
+          <label style="display:block; font-size:12px; font-weight:700; color:var(--v2-muted); text-transform:uppercase; letter-spacing:0.5px; margin-bottom:6px;">
+            Comprobante <span style="color:var(--v2-primary);">*</span>
+          </label>
+          <input type="file" name="comprobante" accept="application/pdf,image/jpeg,image/png,.pdf,.jpg,.jpeg,.png" required
+                 style="width:100%; padding:8px 10px; border:1px solid var(--v2-border); border-radius:7px; font-size:13px; box-sizing:border-box; background:#fff;">
+          <small style="display:block; margin-top:6px; color:var(--v2-muted); font-size:12px;">
+            Sube una foto (JPG/PNG) o PDF del comprobante de pago. Max 2MB.
+          </small>
+        </div>
+
+        <div style="background:#fef3c7; border:1px solid #fde68a; border-radius:8px; padding:12px 14px; font-size:12px; color:#92400e;">
+          <strong>Importante:</strong> el administrador validara el comprobante y confirmara el pago en breve.
+        </div>
+      </div>
+    </div>
+
+    <div style="display:flex; gap:10px; justify-content:flex-end; margin-top:14px;">
+      <a href="{{ url_for('mi_cuenta', tab='pagos') }}" class="hn-modal-btn hn-modal-btn-outline" style="text-decoration:none; color:var(--v2-muted);">← Cancelar</a>
+      <button type="submit" class="hn-modal-btn hn-modal-btn-primary">Enviar comprobante</button>
+    </div>
+  </form>
+</div>
+
+{% endblock %}
