@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+{% block title %}Mis Pagos — HIERRONORT{% endblock %}
+{% block content %}
+
+<div class="page-head">
+  <a href="{{ url_for('mi_cuenta') }}" class="back">← Mi cuenta</a>
+  <h1>Mis Pagos</h1>
+  <p>{{ items|length }} pago{{ '' if items|length == 1 else 's' }} registrado{{ '' if items|length == 1 else 's' }} · Total acumulado: <strong>{{ fmt(total_pagado) }}</strong></p>
+</div>
+
+<div class="pagos-list">
+  {% for p in items %}
+    <div class="pago-row">
+      <div class="pago-main">
+        <div class="pago-date">{{ fmt_fecha(p.fecha) }}</div>
+        <div class="pago-meta">
+          <span class="metodo">{{ p.metodo|capitalize }}</span>
+          {% if p.referencia %}<span class="ref">{{ p.referencia }}</span>{% endif %}
+          {% if p.factura_numero %}<a href="{{ url_for('factura_detalle', fid=p.factura_id) }}" class="factura">Factura {{ p.factura_numero }}</a>{% endif %}
+        </div>
+      </div>
+      <div class="pago-amount">{{ fmt(p.monto) }}</div>
+    </div>
+  {% else %}
+    <div class="empty">
+      <h3>No hay pagos registrados</h3>
+      <p>Cuando registres un pago, aparecerá acá.</p>
+    </div>
+  {% endfor %}
+</div>
+
+{% endblock %}
