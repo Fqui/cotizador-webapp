@@ -1,0 +1,100 @@
+{% extends "base.html" %}
+{% block title %}Pagos — Admin HIERRONORT{% endblock %}
+{% block content %}
+
+<div class="dashboard-v2 pagos-v2">
+  <div class="page-head">
+    <div class="page-head-left">
+      <a href="{{ url_for('admin') }}" style="font-size:12px; color:var(--v2-muted); text-decoration:none;">← Admin</a>
+      <h1>Pagos</h1>
+      <p>{{ n_pendientes }} pago{{ '' if n_pendientes == 1 else 's' }} pendiente{{ '' if n_pendientes == 1 else 's' }} · {{ n_confirmados }} confirmado{{ '' if n_confirmados == 1 else 's' }}</p>
+    </div>
+    <div class="page-head-right">
+      <a class="btn-mi-cuenta btn-mi-cuenta-primary" href="{{ url_for('admin_pagos_pendientes_cargar') }}" style="text-decoration:none;">+ Cargar pago en nombre del cliente</a>
+    </div>
+  </div>
+
+  <div class="tabs">
+    <a class="tab {% if tab == 'pendientes' %}active{% endif %}" href="{{ url_for('admin_pagos_pendientes', tab='pendientes') }}">
+      Pendientes de aprobación <span class="cnt o">{{ n_pendientes }}</span>
+    </a>
+    <a class="tab {% if tab == 'confirmados' %}active{% endif %}" href="{{ url_for('admin_pagos_pendientes', tab='confirmados') }}">
+      Confirmados <span class="cnt g">{{ n_confirmados }}</span>
+    </a>
+  </div>
+
+  <div class="pedidos-v2" style="padding:0;">
+    {% if pagos %}
+      <div class="tabla-wrap" style="border-radius:0; border-top:none; border-left:none; border-right:none;">
+        <table class="tabla">
+          <thead>
+            <tr>
+              <th>Fecha</th>
+              <th>Cliente</th>
+              <th>Monto</th>
+              <th>Comprobante</th>
+              <th>Pedido origen</th>
+              <th>Estado</th>
+              <th>Acción</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for p in pagos %}
+              <tr>
+                <td style="color:var(--v2-muted);">{{ p.fecha }}</td>
+                <td><strong>{{ p.cliente_nombre or '—' }}</strong></td>
+                <td style="font-weight:700;">{{ fmt(p.monto) }}</td>
+                <td>
+                  {% if p.comprobante_path %}
+                    <a href="{{ url_for('cliente_comprobante', pago_id=p.id) }}" target="_blank" style="color:var(--v2-info); font-size:12px; font-weight:600; text-decoration:none;">📎 ver_comprobante</a>
+                  {% elif p.metodo == 'efectivo' %}
+                    <span style="color:var(--v2-muted); font-size:12px; font-style:italic;">Pago en efectivo - sin comprobante</span>
+                  {% else %}
+                    <span style="color:var(--v2-muted); font-size:12px; font-style:italic;">Sin comprobante</span>
+                  {% endif %}
+                </td>
+                <td>
+                  {% if p.pedido_nro %}
+                    <a href="{{ url_for('admin_pedidos') }}#{{ p.pedido_nro }}" style="font-family:monospace; font-size:12px; color:var(--v2-muted); text-decoration:none;">{{ p.pedido_nro }}</a>
+                  {% else %}
+                    <span style="font-family:monospace; font-size:12px; color:var(--v2-muted);">—</span>
+                  {% endif %}
+                </td>
+                <td>
+                  {% if p.estado == 'aprobado' %}
+                    <span class="status status-aprobado">✓ Confirmado</span>
+                  {% elif p.estado == 'rechazado' %}
+                    <span class="status status-rechazado">✗ Rechazado</span>
+                  {% else %}
+                    <span class="status status-pendiente">⏳ Pendiente</span>
+                  {% endif %}
+                </td>
+                <td>
+                  <div class="acciones">
+                    {% if p.estado == 'aprobado' %}
+                      <a class="btn-accion btn-outline btn-sm" href="{{ url_for('admin_pagos_pendientes', tab='confirmados') }}#{{ p.id }}" style="text-decoration:none; padding:5px 10px; font-size:11px;">👁 Ver</a>
+                    {% else %}
+                      <form method="post" action="{{ url_for('admin_pago_confirmar', pago_id=p.id) }}" style="display:inline;">
+                        <button class="btn-accion btn-green btn-sm" type="submit" style="padding:5px 10px; font-size:11px;">✓ Aprobar</button>
+                      </form>
+                      <form method="post" action="{{ url_for('admin_pago_rechazar', pago_id=p.id) }}" style="display:inline;"
+                            onsubmit="return confirm('¿Rechazar el pago #{{ p.id }} de {{ p.cliente_nombre }}?');">
+                        <button class="btn-accion btn-red btn-sm" type="submit" style="padding:5px 10px; font-size:11px;">✗ Rechazar</button>
+                      </form>
+                    {% endif %}
+                  </div>
+                </td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    {% else %}
+      <div class="empty" style="background:var(--v2-surface); border:1px solid var(--v2-border); border-radius:10px; padding:32px; text-align:center; color:var(--v2-muted); margin:16px 24px;">
+        <p>No hay pagos {{ 'pendientes' if tab == 'pendientes' else 'confirmados' }} {% if tab == 'pendientes' %}todavía{% endif %}.</p>
+      </div>
+    {% endif %}
+  </div>
+</div>
+
+{% endblock %}
