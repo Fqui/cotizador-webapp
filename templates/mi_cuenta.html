@@ -1,0 +1,302 @@
+{% extends "base.html" %}
+{% block title %}Mi Cuenta — HIERRONORT{% endblock %}
+{% block content %}
+
+<div class="dashboard-v2 mi-cuenta-v2">
+
+  {# === HEADER === #}
+  <div class="mi-cuenta-head">
+    <div>
+      <h1>Hola, {{ cliente.nombre or cliente.usuario }}</h1>
+      <p class="muted">
+        {{ cliente.razon_social or '' }}
+        {% if cliente.cod_cliente %}· <span class="cod-chip mono">{{ cliente.cod_cliente }}</span>{% endif %}
+        {% if cliente.cuit %}· {{ cliente.cuit }}{% endif %}
+        {% if cliente.email %}· {{ cliente.email }}{% endif %}
+        {% if cliente.telefono %}· {{ cliente.telefono }}{% endif %}
+      </p>
+    </div>
+  </div>
+
+  {% with msgs = get_flashed_messages(with_categories=true) %}
+    {% if msgs %}
+      {% for cat, msg in msgs %}
+        <div class="flash flash-{{ 'ok' if cat == 'ok' else 'error' }}">{{ msg }}</div>
+      {% endfor %}
+    {% endif %}
+  {% endwith %}
+
+  {# === BANNER PAGO PENDIENTE === #}
+  {% if pagos_pendientes > 0 %}
+    <div class="banner-pendiente">
+      <div class="banner-icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="24" height="24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+      </div>
+      <div class="banner-text">
+        <strong>Tenés {{ pagos_pendientes }} pago{{ '' if pagos_pendientes == 1 else 's' }} pendiente{{ '' if pagos_pendientes == 1 else 's' }}</strong>
+        <small>Total pendiente: {{ fmt(pendiente_pago) }}</small>
+      </div>
+      <a href="{{ url_for('mi_cuenta', tab='facturas') }}#facturas" class="banner-cta">Ver facturas →</a>
+    </div>
+  {% endif %}
+
+  {# === 4 STATS (mockup Fer 2026-06-15) === #}
+  <div class="stats-row">
+    <div class="stat-card total">
+      <div class="stat-label">Total facturado</div>
+      <div class="stat-value">{{ fmt(total_facturado) }}</div>
+      <div class="stat-sub">{{ n_facturas }} factura{{ '' if n_facturas == 1 else 's' }}</div>
+    </div>
+    <div class="stat-card pagado">
+      <div class="stat-label">Total pagado</div>
+      <div class="stat-value">{{ fmt(total_pagado) }}</div>
+      <div class="stat-sub">{{ n_pagos }} pago{{ '' if n_pagos == 1 else 's' }} aprobado{{ '' if n_pagos == 1 else 's' }}</div>
+    </div>
+    <div class="stat-card pendiente">
+      <div class="stat-label">Pendiente de pago</div>
+      <div class="stat-value">{{ fmt(pendiente_pago) }}</div>
+      <div class="stat-sub">{% if pendiente_pago > 0 %}A pagar{% else %}Al día{% endif %}</div>
+    </div>
+    <div class="stat-card total">
+      <div class="stat-label">Cantidad de pedidos</div>
+      <div class="stat-value">{{ n_pedidos }}</div>
+      <div class="stat-sub">histórico total</div>
+    </div>
+  </div>
+  </div>
+
+  {# === TABS === #}
+  <div class="ficha-tabs">
+    <a class="ficha-tab {% if tab == 'pedidos' %}active{% endif %}"
+       href="{{ url_for('mi_cuenta', tab='pedidos') }}">
+      Pedidos <span class="tab-count">{{ n_pedidos }}</span>
+    </a>
+    <a class="ficha-tab {% if tab == 'facturas' %}active{% endif %}"
+       href="{{ url_for('mi_cuenta', tab='facturas') }}">
+      Facturas <span class="tab-count">{{ facturas|length }}</span>
+    </a>
+    <a class="ficha-tab {% if tab == 'pagos' %}active{% endif %}"
+       href="{{ url_for('mi_cuenta', tab='pagos') }}">
+      Pagos <span class="tab-count">{{ pagos|length }}</span>
+    </a>
+  </div>
+
+  <div class="ficha-content">
+
+    {# === TAB PEDIDOS === #}
+    {% if tab == 'pedidos' %}
+      <div class="section">
+        <div class="section-head">
+          <div class="section-title">Mis pedidos</div>
+        </div>
+        {% if pedidos %}
+          <table class="pedidos-table">
+            <thead>
+              <tr>
+                <th>ID</th>
+                <th>Fecha</th>
+                <th>Forma de pago</th>
+                <th>Entrega</th>
+                <th class="r">Total</th>
+                <th>Estado</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for p in pedidos %}
+                <tr>
+                  <td class="id" style="font-family:monospace; font-size:12px; color:var(--v2-muted);">{{ p.nro }}</td>
+                  <td style="font-size:13px;">{{ (p.fecha_hora or '').split('.')[0] }}</td>
+                  <td style="font-size:13px;">{{ p.forma_pago or '—' }}</td>
+                  <td style="font-size:13px;">{{ 'Retira en local' if p.lugar_entrega == 'retira' else 'A domicilio' if p.lugar_entrega else '—' }}</td>
+                  <td class="r" style="font-weight:700;">{{ fmt(p.total) }}</td>
+                  <td>
+                    {% if p.estado == 'entregado' %}
+                      <span class="estado-tag estado-entregado">Entregado</span>
+                    {% elif p.estado == 'pagado' %}
+                      <span class="estado-tag estado-cobrado">Cobrado</span>
+                    {% elif p.estado == 'aprobado' %}
+                      <span class="estado-tag estado-aprobado">Facturado</span>
+                    {% elif p.estado == 'rechazado' %}
+                      <span class="estado-tag estado-rechazado">Rechazado</span>
+                    {% else %}
+                      <span class="estado-tag estado-pendiente">Pendiente</span>
+                    {% endif %}
+                  </td>
+                  <td>
+                    {% if p.estado == 'aprobado' and p.forma_pago != 'efectivo' %}
+                      <a class="btn-mi-cuenta btn-mi-cuenta-primary" href="{{ url_for('cliente_pago_nuevo', nro=p.nro) }}">💵 Cargar pago</a>
+                    {% else %}
+                      <button class="btn-mi-cuenta btn-mi-cuenta-outline" disabled>💵 Cargar pago</button>
+                    {% endif %}
+                  </td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        {% else %}
+          <div class="empty-pedidos">Todavía no hiciste pedidos. Tu historial aparecerá acá cuando confirmes el primero.</div>
+        {% endif %}
+      </div>
+    {% endif %}
+
+    {# === TAB FACTURAS === #}
+    {% if tab == 'facturas' %}
+      <div class="section" id="facturas">
+        <div class="section-head">
+          <div class="section-title">Mis facturas</div>
+        </div>
+        {% if facturas %}
+          <table class="pedidos-table">
+            <thead>
+              <tr>
+                <th>Número</th>
+                <th>Fecha</th>
+                <th class="r">Total</th>
+                <th class="r">Saldo</th>
+                <th>Estado</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for f in facturas %}
+                <tr>
+                  <td class="id" style="font-family:monospace; font-size:12px;">{{ f.numero }}</td>
+                  <td style="font-size:13px;">{{ f.fecha }}</td>
+                  <td class="r" style="font-weight:700;">{{ fmt(f.total) }}</td>
+                  <td class="r" style="color:{% if f.saldo_pendiente and f.saldo_pendiente > 0 %}var(--v2-warn){% else %}var(--v2-muted){% endif %};">
+                    {{ fmt(f.saldo_pendiente) }}
+                  </td>
+                  <td>
+                    {% if f.estado == 'pagada' %}
+                      <span class="estado-tag estado-aprobado">Pagada</span>
+                    {% elif f.estado == 'vencida' %}
+                      <span class="estado-tag estado-rechazado">Vencida</span>
+                    {% else %}
+                      <span class="estado-tag estado-pendiente">Pendiente</span>
+                    {% endif %}
+                  </td>
+                  <td>
+                    <a class="link-ver" href="{{ url_for('cliente_factura_pdf', nro=f.numero) }}" target="_blank">PDF →</a>
+                  </td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        {% else %}
+          <div class="empty-pedidos">Todavía no tenés facturas.</div>
+        {% endif %}
+      </div>
+    {% endif %}
+
+    {# === TAB PAGOS === #}
+    {% if tab == 'pagos' %}
+      <div class="section">
+        <div class="section-head">
+          <div class="section-title">Mis pagos</div>
+        </div>
+        {% if pagos %}
+          <table class="pedidos-table">
+            <thead>
+              <tr>
+                <th>Fecha</th>
+                <th class="r">Monto</th>
+                <th>Forma de pago</th>
+                <th>Factura</th>
+                <th>Comprobante</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for p in pagos %}
+                <tr>
+                  <td style="font-size:13px;">{{ p.fecha }}</td>
+                  <td class="r" style="font-weight:700;">{{ fmt(p.monto) }}</td>
+                  <td><span class="estado-tag estado-cobrado">{{ p.metodo }}</span></td>
+                  <td style="font-family:monospace; font-size:12px; color:var(--v2-muted);">{{ p.referencia or '—' }}</td>
+                  <td>
+                    {% if p.comprobante_path %}
+                      <a class="link-ver" href="{{ url_for('cliente_comprobante', pago_id=p.id) }}" target="_blank">Ver →</a>
+                    {% else %}
+                      <span class="muted-empty">—</span>
+                    {% endif %}
+                  </td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        {% else %}
+          <div class="empty-pedidos">Todavía no tenés pagos registrados.</div>
+        {% endif %}
+      </div>
+    {% endif %}
+
+  </div>
+
+  {# === MIS DATOS (colapsable al final) === #}
+  <div class="datos-toggle" data-target="mis-datos-content" onclick="toggleDatosCli(this)">
+    <span>Mis datos</span>
+    <span class="datos-arrow">▼</span>
+  </div>
+  <div class="datos-content" id="mis-datos-content" style="display:none;">
+    <div class="card" style="border:1px solid var(--v2-border); border-radius:10px; background:var(--v2-surface);">
+      <div class="card-body">
+        <form class="form-grid" method="post" action="{{ url_for('mi_cuenta_editar') }}">
+          <label class="full">
+            <span>Nombre <span style="color:var(--v2-primary);">*</span></span>
+            <input type="text" name="nombre" value="{{ cliente.nombre or '' }}" required>
+          </label>
+          <label class="full">
+            <span>Razón social</span>
+            <input type="text" name="razon_social" value="{{ cliente.razon_social or '' }}">
+          </label>
+          <label>
+            <span>CUIT</span>
+            <input type="text" name="cuit" value="{{ cliente.cuit or '' }}" pattern="[0-9]{2}-[0-9]{8}-[0-9]{1}" placeholder="30-12345678-9">
+          </label>
+          <label>
+            <span>Email</span>
+            <input type="email" name="email" value="{{ cliente.email or '' }}">
+          </label>
+          <label>
+            <span>Teléfono</span>
+            <input type="tel" name="telefono" value="{{ cliente.telefono or '' }}">
+          </label>
+          <label>
+            <span>Localidad</span>
+            <input type="text" name="localidad" value="{{ cliente.localidad or '' }}">
+          </label>
+          <label class="full">
+            <span>Dirección</span>
+            <input type="text" name="direccion" value="{{ cliente.direccion or '' }}">
+          </label>
+          <div class="full form-actions">
+            <button type="submit" class="btn-primary">Guardar cambios</button>
+            <span class="help-text">La contraseña la gestiona el administrador.</span>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <div class="cerrar-sesion" style="margin-top:20px;">
+    <a href="{{ url_for('logout') }}" class="btn-cerrar">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+      Cerrar sesión
+    </a>
+  </div>
+
+</div>
+
+<script>
+function toggleDatosCli(el) {
+  var id = el.getAttribute('data-target');
+  var target = document.getElementById(id);
+  if (!target) return;
+  var open = target.style.display !== 'none';
+  target.style.display = open ? 'none' : 'block';
+  var arrow = el.querySelector('.datos-arrow');
+  if (arrow) arrow.style.transform = open ? 'rotate(0deg)' : 'rotate(180deg)';
+}
+</script>
+
+{% endblock %}
