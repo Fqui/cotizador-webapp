@@ -1,0 +1,43 @@
+{% extends "base.html" %}
+{% block title %}Mis Facturas — HIERRONORT{% endblock %}
+{% block content %}
+
+{% set pendientes = items|selectattr('estado', 'equalto', 'pendiente')|list|length %}
+{% set pagadas = items|selectattr('estado', 'equalto', 'pagada')|list|length %}
+{% set vencidas = items|selectattr('estado', 'equalto', 'vencida')|list|length %}
+
+<div class="page-head">
+  <a href="{{ url_for('mi_cuenta') }}" class="back">← Mi cuenta</a>
+  <h1>Mis Facturas</h1>
+  <p>{{ items|length }} facturas en total</p>
+</div>
+
+<div class="filter-bar">
+  <button class="chip active">Todas <span class="count">{{ items|length }}</span></button>
+  <button class="chip">Pendientes <span class="count">{{ pendientes }}</span></button>
+  <button class="chip">Pagadas <span class="count">{{ pagadas }}</span></button>
+  <button class="chip">Vencidas <span class="count">{{ vencidas }}</span></button>
+</div>
+
+<div class="invoice-list">
+  {% for f in items %}
+    <a class="invoice-row {{ f.estado }}" href="{{ url_for('factura_detalle', fid=f.id) }}">
+      <div class="invoice-head">
+        <span class="invoice-num">{{ f.numero }}</span>
+        <span class="badge {{ f.estado }}">{{ f.estado|capitalize }}</span>
+      </div>
+      <div class="invoice-date">Emitida {{ fmt_fecha(f.fecha) }}</div>
+      <div class="invoice-amounts">
+        <div class="total">Total: <span class="v">{{ fmt(f.total) }}</span></div>
+        <div class="saldo {{ f.estado }}"><span class="small">Saldo</span>{{ fmt(f.saldo_pendiente) }}</div>
+      </div>
+    </a>
+  {% else %}
+    <div class="empty">
+      <h3>No tenés facturas todavía</h3>
+      <p>Cuando emitas tu primera compra, aparecerá acá.</p>
+    </div>
+  {% endfor %}
+</div>
+
+{% endblock %}
