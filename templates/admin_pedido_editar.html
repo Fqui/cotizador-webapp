@@ -1,0 +1,190 @@
+{% extends "base.html" %}
+{% block title %}Editar pedido {{ nro }} — Admin HIERRONORT{% endblock %}
+{% block content %}
+
+<div class="dashboard-v2">
+  <div class="page-head">
+    <div class="page-head-left">
+      <a href="{{ url_for('admin_pedidos') }}" style="font-size:12px; color:var(--v2-muted); text-decoration:none;">← Pedidos</a>
+      <h1>Editar pedido <span class="muted" style="font-family:monospace; font-size:14px;">{{ nro }}</span></h1>
+      <p>{{ cliente_nombre }} · Estado actual: <strong>{{ estado }}</strong></p>
+    </div>
+  </div>
+
+  {% with msgs = get_flashed_messages(with_categories=true) %}
+    {% if msgs %}
+      {% for cat, msg in msgs %}
+        <div class="flash flash-{{ 'ok' if cat == 'ok' else 'error' }}" style="background:#d1fae5; color:#065f46; padding:10px 14px; border-radius:7px; margin-bottom:12px; font-size:13px; font-weight:600;">{{ msg }}</div>
+      {% endfor %}
+    {% endif %}
+  {% endwith %}
+
+  <form method="post" id="form-editar-pedido">
+    <div class="section" style="margin-bottom:14px;">
+      <div class="section-head">
+        <div class="section-title">Items del pedido <span class="count">{{ items|length }}</span></div>
+      </div>
+
+      <table class="pedido-table" id="tabla-items">
+        <thead>
+          <tr>
+            <th style="width:90px">Cód.</th>
+            <th>Descripción</th>
+            <th style="width:90px">Unidad</th>
+            <th class="r" style="width:110px">Cantidad</th>
+            <th class="r" style="width:140px">Precio unit.</th>
+            <th class="r" style="width:140px">Subtotal</th>
+            <th class="r" style="width:60px"></th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for it in items %}
+            {% set _cod = it.cod or it.codigo or '' %}
+            {% set _desc = it.desc or it.detalle or it.descripcion or '' %}
+            {% set _cant = it.cantidad or it.cant or 0 %}
+            {% set _precio = it.precio_por or it.precio_unitario or 0 %}
+            {% set _uv = it.unidad_venta or '' %}
+            <tr>
+              <td style="font-family:monospace; font-size:12px;">
+                <input type="text" name="cod[]" value="{{ _cod }}" style="width:100%; padding:5px 7px; border:1px solid var(--v2-border); border-radius:5px; font-family:monospace;">
+              </td>
+              <td>
+                <input type="text" name="desc[]" value="{{ _desc }}" style="width:100%; padding:5px 7px; border:1px solid var(--v2-border); border-radius:5px;">
+              </td>
+              <td>
+                <input type="text" name="unidad_venta[]" value="{{ _uv }}" style="width:100%; padding:5px 7px; border:1px solid var(--v2-border); border-radius:5px; font-size:12px;">
+              </td>
+              <td class="r">
+                <input type="number" step="0.01" min="0" name="cantidad[]" value="{{ _cant }}" class="input-cant"
+                       style="width:90px; padding:5px 7px; border:1px solid var(--v2-border); border-radius:5px; text-align:right;">
+              </td>
+              <td class="r">
+                <input type="number" step="0.01" min="0" name="precio_por[]" value="{{ _precio }}" class="input-precio"
+                       style="width:120px; padding:5px 7px; border:1px solid var(--v2-border); border-radius:5px; text-align:right;">
+              </td>
+              <td class="r subtotal" style="font-weight:700; color:var(--v2-fg);">
+                {{ fmt(_cant * _precio) }}
+              </td>
+              <td class="r">
+                <button type="button" class="btn-quitar-item" title="Quitar este item"
+                        style="background:#fee2e2; color:#991b1b; border:1px solid #fecaca; border-radius:5px; padding:4px 8px; font-size:13px; cursor:pointer;">✕</button>
+              </td>
+            </tr>
+          {% endfor %}
+        </tbody>
+        <tfoot>
+          <tr style="background:#fafbfc;">
+            <td colspan="5" class="r" style="padding:12px 14px; font-weight:700; color:var(--v2-muted); text-transform:uppercase; font-size:11px; letter-spacing:0.5px;">Total</td>
+            <td class="r" id="total-final" style="padding:12px 14px; font-weight:800; font-size:18px; color:var(--v2-fg);">{{ fmt(total) }}</td>
+            <td></td>
+          </tr>
+        </tfoot>
+      </table>
+    </div>
+
+    <div class="section" style="margin-bottom:14px;">
+      <div class="section-head">
+        <div class="section-title">Agregar producto por código</div>
+      </div>
+      <div style="padding:14px 20px; display:flex; gap:10px; align-items:center;">
+        <input type="text" id="input-cod-nuevo" placeholder="Ej: ADN10, CEMENTOCPC40, HL20..."
+               style="flex:1; padding:8px 12px; border:1px solid var(--v2-border); border-radius:6px; font-size:13px; font-family:monospace; box-sizing:border-box;">
+        <input type="number" id="input-cant-nuevo" value="1" min="0.01" step="0.01"
+               style="width:100px; padding:8px 12px; border:1px solid var(--v2-border); border-radius:6px; font-size:13px; text-align:right; box-sizing:border-box;">
+        <button type="button" id="btn-agregar-item"
+                style="padding:8px 16px; background:var(--v2-primary); color:#fff; border:none; border-radius:6px; font-size:13px; font-weight:700; cursor:pointer;">+ Agregar</button>
+        <span id="msg-agregar" style="font-size:12px; color:var(--v2-muted);"></span>
+      </div>
+    </div>
+
+    <div style="display:flex; gap:10px; justify-content:flex-end;">
+      <a href="{{ url_for('admin_pedidos', f=('facturados' if estado == 'aprobado' else 'pendientes')) }}" class="btn-accion btn-outline" style="text-decoration:none; color:var(--v2-muted);">← Cancelar</a>
+      <button type="submit" class="btn-accion btn-green" style="border:none;">Guardar cambios</button>
+    </div>
+  </form>
+</div>
+
+<script>
+function fmt(n) {
+  return "$ " + (n).toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+}
+function recalc() {
+  var rows = document.querySelectorAll('#tabla-items tbody tr');
+  var total = 0;
+  rows.forEach(function(r) {
+    var cant = parseFloat(r.querySelector('.input-cant').value) || 0;
+    var prec = parseFloat(r.querySelector('.input-precio').value) || 0;
+    var sub = cant * prec;
+    r.querySelector('.subtotal').textContent = fmt(sub);
+    total += sub;
+  });
+  document.getElementById('total-final').textContent = fmt(total);
+}
+document.querySelectorAll('.input-cant, .input-precio').forEach(function(inp) {
+  inp.addEventListener('input', recalc);
+});
+// Quitar item: remueve la fila
+document.querySelectorAll('.btn-quitar-item').forEach(function(btn) {
+  btn.addEventListener('click', function() {
+    var tbody = document.querySelector('#tabla-items tbody');
+    if (tbody.querySelectorAll('tr').length <= 1) {
+      alert('El pedido debe tener al menos 1 item.');
+      return;
+    }
+    btn.closest('tr').remove();
+    recalc();
+  });
+});
+// Agregar item: fetch al endpoint /api/producto/<cod> y agrega fila
+document.getElementById('btn-agregar-item').addEventListener('click', function() {
+  var cod = document.getElementById('input-cod-nuevo').value.trim();
+  var cant = parseFloat(document.getElementById('input-cant-nuevo').value) || 1;
+  var msg = document.getElementById('msg-agregar');
+  if (!cod) { msg.textContent = 'Ingresa un codigo.'; msg.style.color = 'var(--v2-warn)'; return; }
+  msg.textContent = 'Buscando...'; msg.style.color = 'var(--v2-muted)';
+  fetch('/api/admin/pedido/producto/' + encodeURIComponent(cod))
+    .then(function(r) { return r.json().then(function(j) { return {status: r.status, json: j}; }); })
+    .then(function(res) {
+      if (!res.json.ok) {
+        msg.textContent = 'No se encontro el codigo ' + cod;
+        msg.style.color = 'var(--v2-warn)';
+        return;
+      }
+      var p = res.json;
+      var tbody = document.querySelector('#tabla-items tbody');
+      var tr = document.createElement('tr');
+      tr.innerHTML =
+        '<td style="font-family:monospace; font-size:12px;"><input type="text" name="cod[]" value="' + p.cod + '" style="width:100%; padding:5px 7px; border:1px solid var(--v2-border); border-radius:5px; font-family:monospace;"></td>' +
+        '<td><input type="text" name="desc[]" value="' + (p.descripcion || '') + '" style="width:100%; padding:5px 7px; border:1px solid var(--v2-border); border-radius:5px;"></td>' +
+        '<td><input type="text" name="unidad_venta[]" value="' + (p.unidad_venta || 'unidad') + '" style="width:100%; padding:5px 7px; border:1px solid var(--v2-border); border-radius:5px; font-size:12px;"></td>' +
+        '<td class="r"><input type="number" step="0.01" min="0" name="cantidad[]" value="' + cant + '" class="input-cant" style="width:90px; padding:5px 7px; border:1px solid var(--v2-border); border-radius:5px; text-align:right;"></td>' +
+        '<td class="r"><input type="number" step="0.01" min="0" name="precio_por[]" value="' + p.precio_lista + '" class="input-precio" style="width:120px; padding:5px 7px; border:1px solid var(--v2-border); border-radius:5px; text-align:right;"></td>' +
+        '<td class="r subtotal" style="font-weight:700; color:var(--v2-fg);">' + fmt(cant * p.precio_lista) + '</td>' +
+        '<td class="r"><button type="button" class="btn-quitar-item" title="Quitar este item" style="background:#fee2e2; color:#991b1b; border:1px solid #fecaca; border-radius:5px; padding:4px 8px; font-size:13px; cursor:pointer;">✕</button></td>';
+      tbody.appendChild(tr);
+      // Re-bind eventos
+      tr.querySelector('.input-cant').addEventListener('input', recalc);
+      tr.querySelector('.input-precio').addEventListener('input', recalc);
+      tr.querySelector('.btn-quitar-item').addEventListener('click', function() {
+        var t = document.querySelector('#tabla-items tbody');
+        if (t.querySelectorAll('tr').length <= 1) {
+          alert('El pedido debe tener al menos 1 item.');
+          return;
+        }
+        tr.remove();
+        recalc();
+      });
+      recalc();
+      msg.textContent = '+ ' + p.cod + ' agregado';
+      msg.style.color = 'var(--v2-ok)';
+      document.getElementById('input-cod-nuevo').value = '';
+      document.getElementById('input-cant-nuevo').value = '1';
+    })
+    .catch(function(err) {
+      msg.textContent = 'Error de red: ' + err.message;
+      msg.style.color = 'var(--v2-warn)';
+    });
+});
+</script>
+
+{% endblock %}
