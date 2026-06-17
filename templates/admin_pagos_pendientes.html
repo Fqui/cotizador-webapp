@@ -1,0 +1,98 @@
+{% extends "base.html" %}
+{% block title %}Pagos pendientes — Admin HIERRONORT{% endblock %}
+{% block content %}
+
+<div class="dashboard-v2">
+  <div class="page-head">
+    <div class="page-head-left">
+      <a href="{{ url_for('admin') }}" style="font-size:12px; color:var(--v2-muted); text-decoration:none;">← Admin</a>
+      <h1>Pagos pendientes de aprobación</h1>
+      <p>{{ pagos|length }} pago{{ '' if pagos|length == 1 else 's' }} cargado{{ '' if pagos|length == 1 else 's' }} por clientes, esperando validación.</p>
+    </div>
+  </div>
+
+  {% with msgs = get_flashed_messages(with_categories=true) %}
+    {% if msgs %}
+      {% for cat, msg in msgs %}
+        <div class="flash flash-{{ 'ok' if cat == 'ok' else 'error' if cat == 'error' else 'info' }}">{{ msg }}</div>
+      {% endfor %}
+    {% endif %}
+  {% endwith %}
+
+  <div class="cliente-cabecera">
+    <div>
+      <h1 style="margin:0 0 6px 0; font-size:22px;">Pagos pendientes de aprobación</h1>
+      <p style="margin:0; color:var(--v2-muted); font-size:13px;">{{ pagos|length }} pago{{ '' if pagos|length == 1 else 's' }} cargado{{ '' if pagos|length == 1 else 's' }} por clientes, esperando validación.</p>
+    </div>
+    <div style="margin-left:auto;">
+      <a class="btn-cuenta btn-cuenta-ok" href="{{ url_for('admin_pagos_pendientes_cargar') }}" style="text-decoration:none;">+ Cargar pago en nombre del cliente</a>
+    </div>
+  </div>
+
+  <div class="clientes-v2">
+    {% if pagos %}
+      <div class="tabla-wrap">
+        <table class="tabla">
+          <thead>
+            <tr>
+              <th>Cliente</th>
+              <th>Pedido</th>
+              <th>Fecha</th>
+              <th class="r">Monto</th>
+              <th>Forma de pago</th>
+              <th>Comprobante</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for p in pagos %}
+              <tr>
+                <td class="cliente-nombre">
+                  <strong>{{ p.cliente_nombre or p.usuario or '—' }}</strong>
+                  {% if p.pedido_estado %}
+                    <small style="color:var(--v2-muted);">Pedido: {{ p.pedido_estado }}</small>
+                  {% endif %}
+                </td>
+                <td style="font-family:monospace; font-size:12px;">
+                  {% if p.pedido_nro %}
+                    <a href="{{ url_for('admin_pedidos', f='facturados') }}#{{ p.pedido_nro }}">{{ p.pedido_nro }}</a>
+                  {% else %}
+                    <span class="muted-empty">—</span>
+                  {% endif %}
+                </td>
+                <td style="font-size:13px;">{{ p.fecha or '—' }}</td>
+                <td class="r" style="font-weight:700;">{{ fmt(p.monto) }}</td>
+                <td style="font-size:13px;">{{ p.metodo or '—' }}</td>
+                <td>
+                  {% if p.comprobante_path %}
+                    <a class="link-ver" href="{{ url_for('cliente_comprobante', pago_id=p.id) }}" target="_blank">Ver →</a>
+                  {% else %}
+                    <span class="muted-empty">—</span>
+                  {% endif %}
+                </td>
+                <td class="r">
+                  <div class="cliente-acciones" style="display:flex; gap:6px; justify-content:flex-end;">
+                    <form method="post" action="{{ url_for('admin_pago_confirmar', pago_id=p.id) }}" style="display:inline;">
+                      <button type="submit" class="btn-cuenta btn-cuenta-ok" style="cursor:pointer;">Aprobar</button>
+                    </form>
+                    <form method="post" action="{{ url_for('admin_pago_rechazar', pago_id=p.id) }}" style="display:inline;"
+                          onsubmit="return confirm('¿Rechazar el pago #{{ p.id }}? Se borra la fila y el comprobante.');">
+                      <button type="submit" class="btn-cuenta btn-cuenta-danger" style="cursor:pointer;">Rechazar</button>
+                    </form>
+                  </div>
+                </td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    {% else %}
+      <div class="empty" style="background:var(--v2-surface); border:1px solid var(--v2-border); border-radius:10px; padding:32px; text-align:center; color:var(--v2-muted);">
+        <h3>No hay pagos pendientes</h3>
+        <p>Cuando un cliente cargue un comprobante de pago, va a aparecer acá para que lo apruebes o rechaces.</p>
+      </div>
+    {% endif %}
+  </div>
+</div>
+
+{% endblock %}
