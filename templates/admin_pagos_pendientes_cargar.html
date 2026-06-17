@@ -1,0 +1,118 @@
+{% extends "base.html" %}
+{% block title %}Cargar pago (admin) — HIERRONORT{% endblock %}
+{% block content %}
+
+<div class="dashboard-v2">
+  <div class="page-head">
+    <div class="page-head-left">
+      <a href="{{ url_for('admin_pagos_pendientes') }}" style="font-size:12px; color:var(--v2-muted); text-decoration:none;">← Pagos</a>
+      <h1>Cargar pago en nombre del cliente</h1>
+      <p>Registra un pago que ya tenés (WhatsApp, mail, etc). Se crea la fila en <code>pagos</code> con estado <code>aprobado</code> y se marca el pedido como <code>pagado</code>.</p>
+    </div>
+  </div>
+
+  {% with msgs = get_flashed_messages(with_categories=true) %}
+    {% if msgs %}
+      {% for cat, msg in msgs %}
+        <div class="flash flash-{{ 'ok' if cat == 'ok' else 'error' }}">{{ msg }}</div>
+      {% endfor %}
+    {% endif %}
+  {% endwith %}
+
+  <form method="get" action="{{ url_for('admin_pagos_pendientes_cargar') }}" style="margin-bottom:18px;">
+    <label style="display:block; font-size:12px; font-weight:700; color:var(--v2-muted); text-transform:uppercase; letter-spacing:0.5px; margin-bottom:6px;">
+      Cliente <span style="color:var(--v2-primary);">*</span>
+    </label>
+    <div style="display:flex; gap:10px;">
+      <select name="cliente_id" required onchange="this.form.submit()"
+              style="flex:1; padding:10px 12px; border:1px solid var(--v2-border); border-radius:7px; font-size:14px; background:#fff;">
+        <option value="">— Seleccionar cliente —</option>
+        {% for c in clientes %}
+          <option value="{{ c.id }}" {% if cid_sel == c.id %}selected{% endif %}>
+            {{ c.nombre or c.usuario }} ({{ c.usuario }})
+          </option>
+        {% endfor %}
+      </select>
+    </div>
+  </form>
+
+  {% if cliente_sel %}
+    <form method="post" action="{{ url_for('admin_pagos_pendientes_cargar') }}" enctype="multipart/form-data">
+      <input type="hidden" name="cliente_id" value="{{ cid_sel }}">
+
+      <div class="section">
+        <div class="section-head">
+          <div class="section-title">Datos del pago</div>
+        </div>
+        <div style="padding:18px 20px;">
+          <div style="margin-bottom:16px;">
+            <label style="display:block; font-size:12px; font-weight:700; color:var(--v2-muted); text-transform:uppercase; letter-spacing:0.5px; margin-bottom:6px;">
+              Pedido (no cobrados) <span style="color:var(--v2-primary);">*</span>
+            </label>
+            {% if pedidos %}
+              <select name="pedido_nro" required
+                      style="width:100%; padding:10px 12px; border:1px solid var(--v2-border); border-radius:7px; font-size:14px; background:#fff; box-sizing:border-box;">
+                <option value="">— Seleccionar pedido —</option>
+                {% for p in pedidos %}
+                  <option value="{{ p.nro }}" data-total="{{ p.total }}">
+                    {{ p.nro }} — {{ fmt(p.total) }} ({{ p.estado }})
+                  </option>
+                {% endfor %}
+              </select>
+            {% else %}
+              <div style="background:#fef3c7; border:1px solid #fde68a; border-radius:7px; padding:10px 12px; font-size:13px; color:#92400e;">
+                Este cliente no tiene pedidos pendientes de cobro.
+              </div>
+            {% endif %}
+          </div>
+
+          <div style="margin-bottom:16px;">
+            <label style="display:block; font-size:12px; font-weight:700; color:var(--v2-muted); text-transform:uppercase; letter-spacing:0.5px; margin-bottom:6px;">
+              Monto <span style="color:var(--v2-primary);">*</span>
+            </label>
+            <input type="number" name="monto" step="0.01" min="0.01" required
+                   style="width:100%; padding:10px 12px; border:1px solid var(--v2-border); border-radius:7px; font-size:14px; box-sizing:border-box;">
+          </div>
+
+          <div style="margin-bottom:16px;">
+            <label style="display:block; font-size:12px; font-weight:700; color:var(--v2-muted); text-transform:uppercase; letter-spacing:0.5px; margin-bottom:6px;">
+              Forma de pago <span style="color:var(--v2-primary);">*</span>
+            </label>
+            <select name="metodo" required
+                    style="width:100%; padding:10px 12px; border:1px solid var(--v2-border); border-radius:7px; font-size:14px; background:#fff; box-sizing:border-box;">
+              <option value="">— Seleccionar —</option>
+              <option value="Efectivo">Efectivo</option>
+              <option value="Transferencia">Transferencia</option>
+              <option value="Cheque">Cheque</option>
+            </select>
+          </div>
+
+          <div style="margin-bottom:16px;">
+            <label style="display:block; font-size:12px; font-weight:700; color:var(--v2-muted); text-transform:uppercase; letter-spacing:0.5px; margin-bottom:6px;">
+              Fecha del pago <span style="color:var(--v2-primary);">*</span>
+            </label>
+            <input type="date" name="fecha" value="{{ hoy }}" required
+                   style="width:100%; padding:10px 12px; border:1px solid var(--v2-border); border-radius:7px; font-size:14px; box-sizing:border-box;">
+          </div>
+
+          <div style="margin-bottom:16px;">
+            <label style="display:block; font-size:12px; font-weight:700; color:var(--v2-muted); text-transform:uppercase; letter-spacing:0.5px; margin-bottom:6px;">
+              Comprobante (PDF/JPG/PNG, max 2MB) <span style="color:var(--v2-primary);">*</span>
+            </label>
+            <input type="file" name="comprobante" accept="application/pdf,image/jpeg,image/png,.pdf,.jpg,.jpeg,.png" required
+                   style="width:100%; padding:8px 10px; border:1px solid var(--v2-border); border-radius:7px; font-size:13px; box-sizing:border-box; background:#fff;">
+          </div>
+        </div>
+      </div>
+
+      {% if pedidos %}
+        <div style="display:flex; gap:10px; justify-content:flex-end; margin-top:14px;">
+          <a href="{{ url_for('admin_pagos_pendientes') }}" class="hn-modal-btn hn-modal-btn-outline" style="text-decoration:none; color:var(--v2-muted);">← Cancelar</a>
+          <button type="submit" class="hn-modal-btn hn-modal-btn-primary">Registrar pago</button>
+        </div>
+      {% endif %}
+    </form>
+  {% endif %}
+</div>
+
+{% endblock %}
