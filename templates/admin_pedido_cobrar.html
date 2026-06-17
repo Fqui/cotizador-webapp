@@ -1,0 +1,91 @@
+{% extends "base.html" %}
+{% block title %}Cobrar pedido {{ nro }} — Admin HIERRONORT{% endblock %}
+{% block content %}
+
+<div class="dashboard-v2">
+  <div class="page-head">
+    <div class="page-head-left">
+      <a href="{{ url_for('admin_pedidos', f='facturados') }}" style="font-size:12px; color:var(--v2-muted); text-decoration:none;">← Pedidos facturados</a>
+      <h1>Cobrar pedido <span class="muted" style="font-family:monospace; font-size:14px;">{{ nro_factura or nro }}</span>{% if nro_factura %}<small style="display:block; font-size:11px; color:var(--v2-muted); font-weight:400; margin-top:2px;">{{ nro }}</small>{% endif %}</h1>
+      <p>{{ cliente_nombre }} · Total: <strong>{{ fmt(total) }}</strong></p>
+    </div>
+  </div>
+
+  {% with msgs = get_flashed_messages(with_categories=true) %}
+    {% if msgs %}
+      {% for cat, msg in msgs %}
+        <div class="flash flash-{{ 'ok' if cat == 'ok' else 'error' }}"
+             style="background:{{ '#d1fae5' if cat == 'ok' else '#fee2e2' }}; color:{{ '#065f46' if cat == 'ok' else '#991b1b' }}; padding:10px 14px; border-radius:7px; margin-bottom:12px; font-size:13px; font-weight:600;">
+          {{ msg }}
+        </div>
+      {% endfor %}
+    {% endif %}
+  {% endwith %}
+
+  <form method="post" style="max-width:560px;">
+    <div class="section">
+      <div class="section-head">
+        <div class="section-title">Datos del pago</div>
+      </div>
+      <div style="padding:18px 20px;">
+        <div style="margin-bottom:16px;">
+          <label style="display:block; font-size:12px; font-weight:700; color:var(--v2-muted); text-transform:uppercase; letter-spacing:0.5px; margin-bottom:6px;">
+            Forma de pago <span style="color:var(--v2-primary);">*</span>
+          </label>
+          {% if forma_pago %}
+            <input type="text" value="{{ forma_pago|capitalize }}" readonly
+                   style="width:100%; padding:10px 12px; border:1px solid var(--v2-border); border-radius:7px; font-size:14px; background:#f3f4f6; box-sizing:border-box; color:var(--v2-fg);">
+            <input type="hidden" name="forma_pago_pago" value="{{ forma_pago }}">
+            <small style="display:block; margin-top:4px; font-size:11px; color:var(--v2-muted);">
+              La forma de pago la eligio el cliente al confirmar el pedido. No se puede cambiar aca.
+            </small>
+          {% else %}
+            <select name="forma_pago_pago" required
+                    style="width:100%; padding:10px 12px; border:1px solid var(--v2-border); border-radius:7px; font-size:14px; background:#fff; box-sizing:border-box;">
+              <option value="">— Seleccionar —</option>
+              <option value="Efectivo">Efectivo</option>
+              <option value="Transferencia">Transferencia</option>
+              <option value="Cheque">Cheque</option>
+              <option value="Tarjeta">Tarjeta</option>
+              <option value="MercadoPago">MercadoPago</option>
+              <option value="Otro">Otro</option>
+            </select>
+            <small style="display:block; margin-top:4px; font-size:11px; color:var(--v2-muted);">
+              El cliente no eligio forma de pago. Selecciona manualmente.
+            </small>
+          {% endif %}
+        </div>
+
+        <div style="margin-bottom:16px;">
+          <label style="display:block; font-size:12px; font-weight:700; color:var(--v2-muted); text-transform:uppercase; letter-spacing:0.5px; margin-bottom:6px;">
+            Fecha de pago <span style="color:var(--v2-primary);">*</span>
+          </label>
+          <input type="date" name="fecha_pago" value="{{ hoy }}" required
+                 style="width:100%; padding:10px 12px; border:1px solid var(--v2-border); border-radius:7px; font-size:14px; box-sizing:border-box;">
+        </div>
+
+        <div style="background:#f0f2f5; border-radius:8px; padding:12px 14px; font-size:13px; color:var(--v2-fg);">
+          <div style="display:flex; justify-content:space-between; margin-bottom:4px;">
+            <span style="color:var(--v2-muted);">Pedido</span>
+            <strong style="font-family:monospace;">{{ nro }}</strong>
+          </div>
+          <div style="display:flex; justify-content:space-between; margin-bottom:4px;">
+            <span style="color:var(--v2-muted);">Cliente</span>
+            <strong>{{ cliente_nombre }}</strong>
+          </div>
+          <div style="display:flex; justify-content:space-between;">
+            <span style="color:var(--v2-muted);">Monto a cobrar</span>
+            <strong style="color:var(--v2-info);">{{ fmt(total) }}</strong>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div style="display:flex; gap:10px; justify-content:flex-end; margin-top:14px;">
+      <a href="{{ url_for('admin_pedidos', f='facturados') }}" class="btn-accion btn-outline" style="text-decoration:none; color:var(--v2-muted);">← Cancelar</a>
+      <button type="submit" class="btn-accion btn-green" style="border:none;">$ Registrar cobro</button>
+    </div>
+  </form>
+</div>
+
+{% endblock %}
