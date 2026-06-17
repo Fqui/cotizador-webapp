@@ -1,0 +1,54 @@
+{% extends "base.html" %}
+{% block title %}Factura {{ fac.numero }} — HIERRONORT{% endblock %}
+{% block content %}
+
+<div class="page-head">
+  <a href="{{ url_for('facturas_lista') }}" class="back">← Mis facturas</a>
+  <div class="row" style="display:flex;justify-content:space-between;align-items:flex-start;gap:16px;flex-wrap:wrap;">
+    <div>
+      <h1 class="mono" style="font-size:20px;">{{ fac.numero }}</h1>
+      <p>Emitida {{ fmt_fecha(fac.fecha) }}</p>
+    </div>
+    <span class="badge {{ fac.estado }}" style="font-size:12px;padding:5px 14px;">{{ fac.estado|capitalize }}</span>
+  </div>
+</div>
+
+<div class="detail-precio-box {{ fac.estado }}">
+  <div class="detail-precio-label">Saldo pendiente</div>
+  <div class="detail-precio-valor {{ fac.estado }}">{{ fmt(fac.saldo_pendiente) }}</div>
+  <div class="detail-precio-sub">de un total de {{ fmt(fac.total) }}</div>
+</div>
+
+{% if pagos %}
+<div class="card">
+  <div class="card-head">
+    <h2>Pagos aplicados ({{ pagos|length }})</h2>
+  </div>
+  <div class="items-list">
+    {% for p in pagos %}
+      <div class="item-row">
+        <div>
+          <div class="item-desc">{{ p.metodo|capitalize }}{% if p.referencia %} · <span class="muted mono">{{ p.referencia }}</span>{% endif %}</div>
+          <div class="item-qty">{{ fmt_fecha(p.fecha) }}</div>
+        </div>
+        <div class="item-price">− {{ fmt(p.monto) }}</div>
+      </div>
+    {% endfor %}
+  </div>
+</div>
+{% endif %}
+
+<div class="card">
+  <div class="card-head">
+    <h2>Totales</h2>
+  </div>
+  <div class="totals">
+    <div class="total-row"><span class="l">Total factura</span><span class="v">{{ fmt(fac.total) }}</span></div>
+    {% if pagos %}
+      <div class="total-row payments"><span class="l">Pagado</span><span class="v">− {{ fmt(fac.total - fac.saldo_pendiente) }}</span></div>
+    {% endif %}
+    <div class="total-row saldo {{ fac.estado }}"><span class="l">Saldo pendiente</span><span class="v">{{ fmt(fac.saldo_pendiente) }}</span></div>
+  </div>
+</div>
+
+{% endblock %}
