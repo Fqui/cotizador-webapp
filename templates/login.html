@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+{% block title %}Iniciar sesion — HIERRONORT{% endblock %}
+{% block content %}
+<div class="login-wrap">
+  <div class="login-card">
+    <div class="login-brand">
+      <div class="logo-mark big">
+        <img src="{{ url_for('static', filename='logo-hierronort.png') }}" alt="HIERRONORT">
+      </div>
+      <h1>HIERRONORT</h1>
+      <p>Lista de precios mayorista</p>
+    </div>
+
+    <form method="post" class="login-form" id="login-form">
+      <label>
+        <span>Usuario</span>
+        <input type="text" name="usuario" autocomplete="username" required autofocus placeholder="Tu usuario">
+      </label>
+      <label>
+        <span>Contrasena</span>
+        <input type="password" name="password" autocomplete="current-password" required placeholder="Tu contrasena">
+      </label>
+      <input type="hidden" name="device_token" id="device_token" value="">
+      {% if error %}
+        <div class="error">{{ error }}</div>
+      {% endif %}
+      <button type="submit" class="btn-login">Ingresar</button>
+    </form>
+
+    <script>
+      // Bloque A: device-binding — el form manda el device_token que esta en
+      // localStorage (o cookie) antes del submit. El server lo compara contra
+      // la DB y decide si es el mismo device o uno nuevo.
+      (function() {
+        var token = localStorage.getItem('hn_device_token') || '';
+        var input = document.getElementById('device_token');
+        if (input) input.value = token;
+      })();
+    </script>
+
+    <p class="login-hint">
+      Problemas para entrar? Pedinos tu usuario y contrasena.
+    </p>
+  </div>
+</div>
+{% endblock %}
