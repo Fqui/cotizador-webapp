@@ -1,0 +1,99 @@
+{% extends "base.html" %}
+{% block title %}Clientes — Admin HIERRONORT{% endblock %}
+{% block content %}
+
+<div class="dashboard-v2">
+  <div class="cliente-cabecera">
+    <div>
+      <a href="{{ url_for('admin') }}" style="font-size:12px; color:var(--v2-muted); text-decoration:none;">← Admin</a>
+      <h1>Gestión de clientes</h1>
+      <p>{{ clientes|length }} cliente{{ '' if clientes|length == 1 else 's' }} en total</p>
+    </div>
+  </div>
+
+  {% with msgs = get_flashed_messages(with_categories=true) %}
+    {% if msgs %}
+      {% for cat, msg in msgs %}
+        <div class="flash flash-{{ 'ok' if cat == 'ok' else 'error' }}">{{ msg }}</div>
+      {% endfor %}
+    {% endif %}
+  {% endwith %}
+
+  <form method="get" action="{{ url_for('admin_clientes') }}" class="cliente-buscar"
+        style="display:flex; gap:10px; align-items:center; margin-bottom:16px; flex-wrap:wrap;">
+    <input type="search" name="q" value="{{ q }}" placeholder="Buscar por nombre, cod_cliente, usuario, CUIT..."
+           autocomplete="off"
+           style="flex:1; min-width:240px; padding:9px 14px; border:1px solid var(--v2-border); border-radius:8px; font-size:13px; outline:none; background:#fff;">
+    <button type="submit"
+            style="padding:9px 18px; background:var(--v2-primary); color:#fff; border:none; border-radius:8px; font-size:13px; font-weight:600; cursor:pointer;">
+      Buscar
+    </button>
+    <a href="{{ url_for('admin_clientes') }}?modal=nuevo" data-modal-open="nuevo-cliente"
+       style="margin-left:auto; padding:9px 18px; background:var(--v2-primary); color:#fff; border-radius:8px; font-size:13px; font-weight:600; text-decoration:none;">
+      + Nuevo cliente
+    </a>
+  </form>
+
+  <div class="clientes-v2">
+    {% if clientes %}
+      <div class="tabla-wrap">
+        <table class="tabla">
+          <thead>
+            <tr>
+              <th>Cliente</th>
+              <th>Razón social</th>
+              <th>Localidad</th>
+              <th>Último pedido</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for c in clientes %}
+              <tr class="clickable-row" onclick="window.location='{{ url_for('admin_cliente_ficha', cid=c.id) }}'">
+                <td class="cliente-nombre">
+                  {% if c.nombre %}
+                    <strong>{{ c.nombre }}</strong>
+                    <small>{{ c.usuario }}</small>
+                  {% elif c.razon_social %}
+                    <strong>{{ c.razon_social }}</strong>
+                    <small>{{ c.usuario }}</small>
+                  {% else %}
+                    <strong style="font-family:monospace;">{{ c.usuario }}</strong>
+                  {% endif %}
+                </td>
+                <td>
+                  {% if c.razon_social %}
+                    {{ c.razon_social }}
+                  {% else %}
+                    <span class="muted-empty">—</span>
+                  {% endif %}
+                </td>
+                <td>
+                  {% if c.localidad %}
+                    {{ c.localidad }}
+                  {% else %}
+                    <span class="muted-empty">—</span>
+                  {% endif %}
+                </td>
+                <td>
+                  {% if c.ultimo_pedido_fecha %}
+                    <span style="font-size:12px; color:var(--v2-fg);">{{ c.ultimo_pedido_fecha.split('.')[0].split(' ')[0] }}</span>
+                    <small style="display:block; color:var(--v2-muted); font-size:11px;">{{ c.n_pedidos }} pedido{{ '' if c.n_pedidos == 1 else 's' }}</small>
+                  {% else %}
+                    <span class="muted-empty">Sin pedidos</span>
+                  {% endif %}
+                </td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    {% else %}
+      <div class="empty" style="background:var(--v2-surface); border:1px solid var(--v2-border); border-radius:10px; padding:32px; text-align:center; color:var(--v2-muted);">
+        <h3>No hay clientes que coincidan</h3>
+        <p>Probá otro término o creá uno nuevo.</p>
+      </div>
+    {% endif %}
+  </div>
+</div>
+
+{% endblock %}
