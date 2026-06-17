@@ -1,0 +1,47 @@
+# Exclusiones para el repo cotizador-webapp
+# Datos sensibles y archivos que no son codigo
+
+# Base de datos con datos de clientes
+*.db
+hierronort.db
+
+# SECRET_KEY de Flask (fuga de seguridad si se sube)
+.secret_key
+
+# Configuracion / data
+data.json
+
+# Cache de Python
+__pycache__/
+*.pyc
+*.pyo
+
+# Archivos subidos por usuarios (comprobantes de pago)
+uploads/
+
+# Directorios temporales / auxiliares del server
+_pa_extract/
+_diag_2_2b/
+
+# Backups y archivos deprecados
+*.bak
+*.bak-pre-*
+*.pre-*.bak
+.pre-*.bak
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Python
+*.py[cod]
+*$py.class
+*.egg-info/
+venv/
+env/
+.venv/
+
+# IDE
+.vscode/
+.idea/
+*.swp
