@@ -1,0 +1,596 @@
+{% extends "base.html" %}
+{% block title %}Ficha cliente — Admin HIERRONORT{% endblock %}
+{% block content %}
+
+<div class="dashboard-v2">
+  <div class="ficha-v2">
+
+    {# === HEADER === #}
+    <div class="ficha-head">
+      <div>
+        <a href="{{ url_for('admin_clientes') }}" style="font-size:12px; color:var(--v2-muted); text-decoration:none;">← Clientes</a>
+        <h1>{{ cliente.nombre or cliente.usuario }}</h1>
+        <p class="ficha-sub">
+          {{ cliente.razon_social or '' }}{% if cliente.razon_social %} · {% endif %}{{ cliente.localidad or '' }}
+          {% if cliente.activo %}
+            <span class="status-dot status-dot-ok" title="Activo"></span>
+            <span style="color:var(--v2-ok); font-weight:600;">Activo</span>
+          {% else %}
+            <span class="status-dot status-dot-off" title="Inactivo"></span>
+            <span style="color:var(--v2-muted); font-weight:600;">Inactivo</span>
+          {% endif %}
+        </p>
+      </div>
+      <div class="ficha-head-actions">
+        <a class="btn-back" href="{{ url_for('admin_clientes') }}">← Volver</a>
+        <button class="btn-notas" data-modal-open="modal-notas-ficha" title="Notas internas">📝 Notas</button>
+        <button type="button" class="btn-edit" data-modal-open="modal-editar-cliente">✏ Editar</button>
+        {% if cliente.activo %}
+          <button type="button" class="btn-danger" data-modal-open="modal-bloquear">Desactivar</button>
+        {% else %}
+          <button type="button" class="btn-edit" data-modal-open="modal-activar">Activar</button>
+        {% endif %}
+      </div>
+    </div>
+
+    {% with msgs = get_flashed_messages(with_categories=true) %}
+      {% if msgs %}
+        {% for cat, msg in msgs %}
+          <div class="flash flash-{{ 'ok' if cat == 'ok' else 'error' }}">{{ msg }}</div>
+        {% endfor %}
+      {% endif %}
+    {% endwith %}
+
+    {# === 5 STATS COMERCIALES === #}
+    <div class="ficha-stats">
+      <div class="stat top-primary">
+        <div class="stat-label">Pedidos totales</div>
+        <div class="stat-value">{{ n_pedidos }}</div>
+      </div>
+      <div class="stat top-warn">
+        <div class="stat-label">Pendientes</div>
+        <div class="stat-value">{{ n_pendientes }}</div>
+      </div>
+      <div class="stat top-info">
+        <div class="stat-label">Facturado</div>
+        <div class="stat-value" style="font-size:18px;">{{ fmt(facturado_total) }}</div>
+      </div>
+      <div class="stat top-ok">
+        <div class="stat-label">Cobrado</div>
+        <div class="stat-value" style="font-size:18px;">{{ fmt(cobrado_total) }}</div>
+      </div>
+      <div class="stat top-muted">
+        <div class="stat-label">Pendiente cobro</div>
+        <div class="stat-value" style="font-size:18px; color:var(--v2-warn);">{{ fmt(pendiente_cobro) }}</div>
+      </div>
+    </div>
+
+    {# === TABS === #}
+    <div class="ficha-tabs">
+      <a class="ficha-tab {% if tab == 'pedidos' %}active{% endif %}"
+         href="{{ url_for('admin_cliente_ficha', cid=cliente.id, tab='pedidos') }}">
+        📋 Pedidos <span class="tab-count">{{ n_pedidos }}</span>
+      </a>
+      <a class="ficha-tab {% if tab == 'facturas' %}active{% endif %}"
+         href="{{ url_for('admin_cliente_ficha', cid=cliente.id, tab='facturas') }}">
+        📄 Facturas <span class="tab-count">{{ n_facturas }}</span>
+      </a>
+      <a class="ficha-tab {% if tab == 'pagos' %}active{% endif %}"
+         href="{{ url_for('admin_cliente_ficha', cid=cliente.id, tab='pagos') }}">
+        💰 Pagos <span class="tab-count">{{ n_pagos }}</span>
+      </a>
+    </div>
+
+    <div class="ficha-content">
+
+      {# === TAB PEDIDOS === #}
+      {% if tab == 'pedidos' %}
+        <div class="section">
+          <div class="section-head">
+            <div class="section-title">Historial de pedidos</div>
+          </div>
+          {% if pedidos %}
+            <table class="pedidos-table">
+              <thead>
+                <tr>
+                  <th>ID</th>
+                  <th>Fecha</th>
+                  <th>Forma de pago</th>
+                  <th>Entrega</th>
+                  <th class="r">Total</th>
+                  <th>Estado</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for p in pedidos %}
+                  <tr>
+                    <td class="id" style="font-family:monospace; font-size:12px; color:var(--v2-muted);">{{ p.nro }}</td>
+                    <td style="color:var(--v2-fg); font-size:13px;">{{ (p.fecha_hora or '').split('.')[0] }}</td>
+                    <td style="font-size:13px;">{{ p.forma_pago or '—' }}</td>
+                    <td style="font-size:13px;">{{ 'Retira en local' if p.lugar_entrega == 'retira' else 'A domicilio' if p.lugar_entrega else '—' }}</td>
+                    <td class="r" style="font-weight:700;">{{ fmt(p.total) }}</td>
+                    <td>
+                      {% if p.estado == 'entregado' %}
+                        <span class="estado-tag estado-entregado">Entregado</span>
+                      {% elif p.estado == 'pagado' %}
+                        <span class="estado-tag estado-cobrado">Cobrado</span>
+                      {% elif p.estado == 'aprobado' %}
+                        <span class="estado-tag estado-aprobado">Facturado</span>
+                      {% elif p.estado == 'rechazado' %}
+                        <span class="estado-tag estado-rechazado">Rechazado</span>
+                      {% else %}
+                        <span class="estado-tag estado-pendiente">Pendiente</span>
+                      {% endif %}
+                    </td>
+                    <td><a class="link-ver" href="{{ url_for('admin_pedidos', f='pendientes') }}#{{ p.nro }}">Ver →</a></td>
+                  </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          {% else %}
+            <div class="empty-pedidos">Este cliente no tiene pedidos todavía.</div>
+          {% endif %}
+        </div>
+      {% endif %}
+
+      {# === TAB FACTURAS === #}
+      {% if tab == 'facturas' %}
+        <div class="section">
+          <div class="section-head">
+            <div class="section-title">Facturas del cliente</div>
+          </div>
+          {% if facturas %}
+          <table class="pedidos-table">
+            <thead>
+              <tr>
+                <th>Número</th>
+                <th>Fecha</th>
+                <th class="r">Total</th>
+                <th class="r">Saldo pendiente</th>
+                <th>Estado</th>
+                <th>PDF</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for f in facturas %}
+                <tr>
+                  <td class="id" style="font-family:monospace; font-size:12px;">{{ f.numero }}</td>
+                  <td style="font-size:13px;">{{ f.fecha }}</td>
+                  <td class="r" style="font-weight:700;">{{ fmt(f.total) }}</td>
+                  <td class="r" style="color:{% if f.saldo_pendiente and f.saldo_pendiente > 0 %}var(--v2-warn){% else %}var(--v2-muted){% endif %};">
+                    {{ fmt(f.saldo_pendiente) }}
+                  </td>
+                  <td>
+                    {% if f.estado == 'pagada' %}
+                      <span class="estado-tag estado-aprobado">Pagada</span>
+                    {% elif f.estado == 'vencida' %}
+                      <span class="estado-tag estado-rechazado">Vencida</span>
+                    {% else %}
+                      <span class="estado-tag estado-pendiente">Pendiente</span>
+                    {% endif %}
+                  </td>
+                  <td>
+                    <a class="link-ver" href="{{ url_for('cliente_factura_pdf', nro=f.numero) }}" target="_blank">
+                      {% if f.archivo_path %}PDF subido{% else %}PDF alta{% endif %} →
+                    </a>
+                  </td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+          {% else %}
+            <div class="empty-pedidos">Este cliente no tiene facturas todavía.</div>
+          {% endif %}
+        </div>
+      {% endif %}
+
+      {# === TAB PAGOS === #}
+      {% if tab == 'pagos' %}
+        <div class="section">
+          <div class="section-head">
+            <div class="section-title">Pagos registrados</div>
+          </div>
+          {% if pagos %}
+          <table class="pedidos-table">
+            <thead>
+              <tr>
+                <th>Fecha</th>
+                <th class="r">Monto</th>
+                <th>Método</th>
+                <th>Referencia (factura)</th>
+                <th>Comprobante</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for p in pagos %}
+                <tr>
+                  <td style="font-size:13px;">{{ p.fecha }}</td>
+                  <td class="r" style="font-weight:700;">{{ fmt(p.monto) }}</td>
+                  <td><span class="estado-tag estado-cobrado">{{ p.metodo }}</span></td>
+                  <td style="font-family:monospace; font-size:12px; color:var(--v2-muted);">{{ p.referencia or '—' }}</td>
+                  <td>
+                    {% if p.comprobante_path %}
+                      <a class="link-ver" href="{{ url_for('cliente_comprobante', pago_id=p.id) }}" target="_blank">Ver →</a>
+                    {% else %}
+                      <span class="muted-empty">—</span>
+                    {% endif %}
+                  </td>
+                  <td>
+                    <form method="post" action="{{ url_for('admin_pago_confirmar', pago_id=p.id) }}" style="display:inline;">
+                      <button type="submit" class="link-ver" style="background:none; border:none; cursor:pointer; padding:0; color:var(--v2-ok); font-weight:600; font-size:12px;"
+                              onclick="return confirm('¿Confirmar este pago y cambiar el pedido a estado PAGADO?')">
+                        ✓ Confirmar
+                      </button>
+                    </form>
+                  </td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+          {% else %}
+            <div class="empty-pedidos">Este cliente no tiene pagos registrados.</div>
+          {% endif %}
+        </div>
+      {% endif %}
+
+      {# === DATOS DEL CLIENTE (colapsable, colapsado por default) === #}
+      <div class="datos-toggle" data-target="datos-content" onclick="toggleDatos(this)">
+        <span>📇 Datos del cliente</span>
+        <span class="datos-arrow">▼</span>
+      </div>
+      <div class="datos-content" id="datos-content" style="display:none;">
+        <div class="datos-grid">
+          <div class="row"><span class="lbl">Nombre</span>
+            <span class="val {% if not cliente.nombre %}empty{% endif %}">{{ cliente.nombre or 'Sin dato' }}</span>
+          </div>
+          <div class="row"><span class="lbl">Razón social</span>
+            <span class="val {% if not cliente.razon_social %}empty{% endif %}">{{ cliente.razon_social or 'Sin dato' }}</span>
+          </div>
+          <div class="row"><span class="lbl">CUIT</span>
+            <span class="val {% if not cliente.cuit %}empty{% endif %}">{{ cliente.cuit or 'Sin dato' }}</span>
+          </div>
+          <div class="row"><span class="lbl">Email</span>
+            <span class="val {% if not cliente.email %}empty{% endif %}">{{ cliente.email or 'Sin dato' }}</span>
+          </div>
+          <div class="row"><span class="lbl">Teléfono</span>
+            <span class="val {% if not cliente.telefono %}empty{% endif %}">{{ cliente.telefono or 'Sin dato' }}</span>
+          </div>
+          <div class="row"><span class="lbl">Tipo</span>
+            <span class="val {% if not cliente.tipo_cliente %}empty{% endif %}">
+              {% if cliente.tipo_cliente == 'responsable_inscripto' %}Responsable Inscripto
+              {% elif cliente.tipo_cliente == 'monotributo' %}Monotributista
+              {% elif cliente.tipo_cliente == 'consumidor_final' %}Consumidor Final
+              {% elif cliente.tipo_cliente == 'exento' %}Exento
+              {% else %}Sin dato
+              {% endif %}
+            </span>
+          </div>
+          <div class="row"><span class="lbl">Dirección</span>
+            <span class="val {% if not cliente.direccion %}empty{% endif %}">{{ cliente.direccion or 'Sin dato' }}</span>
+          </div>
+          <div class="row"><span class="lbl">Localidad</span>
+            <span class="val {% if not cliente.localidad %}empty{% endif %}">{{ cliente.localidad or 'Sin dato' }}</span>
+          </div>
+          <div class="row"><span class="lbl">Usuario</span>
+            <span class="val" style="font-family:monospace;">{{ cliente.usuario }}</span>
+          </div>
+          <div class="row"><span class="lbl">Cód. cliente</span>
+            <span class="val {% if not cliente.cod_cliente %}empty{% endif %}">{{ cliente.cod_cliente or 'Sin código' }}</span>
+          </div>
+        </div>
+      </div>
+
+      {# === SECCION DESCUENTOS (editables via sub-modal) === #}
+      <div class="datos-toggle" data-target="descuentos-content" onclick="toggleDatos(this)">
+        <span>💸 Descuentos</span>
+        <span class="datos-arrow">▼</span>
+      </div>
+      <div class="datos-content" id="descuentos-content" style="display:none;">
+        <div class="datos-grid">
+          <div class="row">
+            <span class="lbl">Descuento ADN</span>
+            <span class="val {% if cliente.descuento_adn is none %}empty{% endif %}">
+              {% if cliente.descuento_adn is not none %}
+                {{ '%.2f'|format(cliente.descuento_adn) }}%
+              {% else %}
+                Sin descuento
+              {% endif %}
+            </span>
+          </div>
+          <div class="row">
+            <span class="lbl">Descuento Cemento</span>
+            <span class="val {% if cliente.descuento_cemento is none %}empty{% endif %}">
+              {% if cliente.descuento_cemento is not none %}
+                {{ '%.2f'|format(cliente.descuento_cemento) }}%
+              {% else %}
+                Sin descuento
+              {% endif %}
+            </span>
+          </div>
+          <div class="row">
+            <span class="lbl">Descuento Resto</span>
+            <span class="val {% if cliente.descuento_resto is none %}empty{% endif %}">
+              {% if cliente.descuento_resto is not none %}
+                {{ '%.2f'|format(cliente.descuento_resto) }}%
+              {% else %}
+                Sin descuento
+              {% endif %}
+            </span>
+          </div>
+        </div>
+        <div style="margin-top:14px;">
+          <button type="button" class="btn-notas" data-modal-open="modal-descuentos-ficha">✏ Editar descuentos</button>
+        </div>
+      </div>
+
+      {# === DEVICE INFO (una linea colapsada + Ver detalle) === #}
+      <div class="device-row">
+        <span class="dot {% if cliente.device_token %}ok{% else %}off{% endif %}">●</span>
+        <strong style="color:var(--v2-fg); font-size:12px;">Device:</strong>
+        <span>
+          {% if cliente.device_token %}
+            Vinculado
+            {% if cliente.device_last_login %}· Último login {{ cliente.device_last_login }}{% endif %}
+          {% else %}
+            Sin device vinculado
+          {% endif %}
+        </span>
+        {% if cliente.device_token %}
+          <a href="#" class="device-ver-detalle" data-modal-open="modal-device-detalle">Ver detalle</a>
+        {% endif %}
+      </div>
+
+    </div>
+
+  </div>
+</div>
+
+{# === MODAL NOTAS INTERNAS === #}
+{% if session.is_admin %}
+<div id="modal-editar-cliente" class="hn-modal-overlay" style="display:none;">
+  <div class="hn-modal" style="max-width:560px;">
+    <div class="hn-modal-head">
+      <h3>✏ Editar cliente</h3>
+      <button class="hn-modal-close" data-modal-close="modal-editar-cliente">×</button>
+    </div>
+    <form method="post" action="{{ url_for('admin_cliente_editar', cid=cliente.id) }}">
+      <div class="hn-modal-body" style="display:grid; grid-template-columns: 1fr 1fr; gap:14px;">
+        <div>
+          <label style="font-size:11px; color:var(--v2-muted); text-transform:uppercase; letter-spacing:0.5px; font-weight:700; display:block; margin-bottom:4px;">Usuario</label>
+          <input type="text" name="usuario" value="{{ cliente.usuario or '' }}" required
+                 style="width:100%; padding:8px 10px; border:1px solid var(--v2-border); border-radius:6px; font-size:13px; box-sizing:border-box; font-family:monospace;">
+        </div>
+        <div>
+          <label style="font-size:11px; color:var(--v2-muted); text-transform:uppercase; letter-spacing:0.5px; font-weight:700; display:block; margin-bottom:4px;">Cód. cliente</label>
+          <input type="text" name="cod_cliente" value="{{ cliente.cod_cliente or '' }}"
+                 style="width:100%; padding:8px 10px; border:1px solid var(--v2-border); border-radius:6px; font-size:13px; box-sizing:border-box;">
+        </div>
+        <div>
+          <label style="font-size:11px; color:var(--v2-muted); text-transform:uppercase; letter-spacing:0.5px; font-weight:700; display:block; margin-bottom:4px;">Nombre</label>
+          <input type="text" name="nombre" value="{{ cliente.nombre or '' }}"
+                 style="width:100%; padding:8px 10px; border:1px solid var(--v2-border); border-radius:6px; font-size:13px; box-sizing:border-box;">
+        </div>
+        <div>
+          <label style="font-size:11px; color:var(--v2-muted); text-transform:uppercase; letter-spacing:0.5px; font-weight:700; display:block; margin-bottom:4px;">Razón social</label>
+          <input type="text" name="razon_social" value="{{ cliente.razon_social or '' }}"
+                 style="width:100%; padding:8px 10px; border:1px solid var(--v2-border); border-radius:6px; font-size:13px; box-sizing:border-box;">
+        </div>
+        <div>
+          <label style="font-size:11px; color:var(--v2-muted); text-transform:uppercase; letter-spacing:0.5px; font-weight:700; display:block; margin-bottom:4px;">CUIT</label>
+          <input type="text" name="cuit" value="{{ cliente.cuit or '' }}"
+                 style="width:100%; padding:8px 10px; border:1px solid var(--v2-border); border-radius:6px; font-size:13px; box-sizing:border-box; font-family:monospace;">
+        </div>
+        <div>
+          <label style="font-size:11px; color:var(--v2-muted); text-transform:uppercase; letter-spacing:0.5px; font-weight:700; display:block; margin-bottom:4px;">Tipo de cliente</label>
+          <select name="tipo_cliente" style="width:100%; padding:8px 10px; border:1px solid var(--v2-border); border-radius:6px; font-size:13px; box-sizing:border-box; background:#fff; font-family:inherit;">
+            <option value="">(Sin dato)</option>
+            <option value="responsable_inscripto" {% if cliente.tipo_cliente == 'responsable_inscripto' %}selected{% endif %}>Responsable Inscripto</option>
+            <option value="monotributo" {% if cliente.tipo_cliente == 'monotributo' %}selected{% endif %}>Monotributista</option>
+            <option value="consumidor_final" {% if cliente.tipo_cliente == 'consumidor_final' %}selected{% endif %}>Consumidor Final</option>
+            <option value="exento" {% if cliente.tipo_cliente == 'exento' %}selected{% endif %}>Exento</option>
+          </select>
+        </div>
+        <div>
+          <label style="font-size:11px; color:var(--v2-muted); text-transform:uppercase; letter-spacing:0.5px; font-weight:700; display:block; margin-bottom:4px;">Email</label>
+          <input type="email" name="email" value="{{ cliente.email or '' }}"
+                 style="width:100%; padding:8px 10px; border:1px solid var(--v2-border); border-radius:6px; font-size:13px; box-sizing:border-box;">
+        </div>
+        <div>
+          <label style="font-size:11px; color:var(--v2-muted); text-transform:uppercase; letter-spacing:0.5px; font-weight:700; display:block; margin-bottom:4px;">Teléfono</label>
+          <input type="text" name="telefono" value="{{ cliente.telefono or '' }}"
+                 style="width:100%; padding:8px 10px; border:1px solid var(--v2-border); border-radius:6px; font-size:13px; box-sizing:border-box;">
+        </div>
+        <div>
+          <label style="font-size:11px; color:var(--v2-muted); text-transform:uppercase; letter-spacing:0.5px; font-weight:700; display:block; margin-bottom:4px;">Dirección</label>
+          <input type="text" name="direccion" value="{{ cliente.direccion or '' }}"
+                 style="width:100%; padding:8px 10px; border:1px solid var(--v2-border); border-radius:6px; font-size:13px; box-sizing:border-box;">
+        </div>
+        <div>
+          <label style="font-size:11px; color:var(--v2-muted); text-transform:uppercase; letter-spacing:0.5px; font-weight:700; display:block; margin-bottom:4px;">Localidad</label>
+          <input type="text" name="localidad" value="{{ cliente.localidad or '' }}"
+                 style="width:100%; padding:8px 10px; border:1px solid var(--v2-border); border-radius:6px; font-size:13px; box-sizing:border-box;">
+        </div>
+      </div>
+      <div class="hn-modal-foot">
+        <button type="button" class="hn-modal-btn hn-modal-btn-outline" data-modal-close="modal-editar-cliente">Cancelar</button>
+        <button type="submit" class="hn-modal-btn hn-modal-btn-primary">Guardar cambios</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<div id="modal-descuentos-ficha" class="hn-modal-overlay" style="display:none;">
+  <div class="hn-modal" style="max-width:500px;">
+    <div class="hn-modal-head">
+      <h3>💸 Editar descuentos</h3>
+      <button class="hn-modal-close" data-modal-close="modal-descuentos-ficha">×</button>
+    </div>
+    <form method="post" action="{{ url_for('admin_cliente_descuentos', cid=cliente.id) }}">
+      <div class="hn-modal-body" style="display:grid; grid-template-columns: 1fr; gap:14px;">
+        <p class="muted" style="margin:0; font-size:12px;">
+          Porcentaje de descuento que se aplica al precio de lista según el rubro.
+          Dejá vacío para no aplicar descuento.
+        </p>
+        <div>
+          <label style="font-size:11px; color:var(--v2-muted); text-transform:uppercase; letter-spacing:0.5px; font-weight:700; display:block; margin-bottom:4px;">
+            Descuento ADN (%)
+          </label>
+          <input type="number" name="descuento_adn" min="0" max="100" step="0.01"
+                 value="{{ '' if cliente.descuento_adn is none else '%.2f'|format(cliente.descuento_adn) }}"
+                 placeholder=""
+                 style="width:100%; padding:8px 10px; border:1px solid var(--v2-border); border-radius:6px; font-size:13px; box-sizing:border-box; font-family:inherit;">
+        </div>
+        <div>
+          <label style="font-size:11px; color:var(--v2-muted); text-transform:uppercase; letter-spacing:0.5px; font-weight:700; display:block; margin-bottom:4px;">
+            Descuento Cemento (%)
+          </label>
+          <input type="number" name="descuento_cemento" min="0" max="100" step="0.01"
+                 value="{{ '' if cliente.descuento_cemento is none else '%.2f'|format(cliente.descuento_cemento) }}"
+                 placeholder=""
+                 style="width:100%; padding:8px 10px; border:1px solid var(--v2-border); border-radius:6px; font-size:13px; box-sizing:border-box; font-family:inherit;">
+        </div>
+        <div>
+          <label style="font-size:11px; color:var(--v2-muted); text-transform:uppercase; letter-spacing:0.5px; font-weight:700; display:block; margin-bottom:4px;">
+            Descuento Resto (%)
+          </label>
+          <input type="number" name="descuento_resto" min="0" max="100" step="0.01"
+                 value="{{ '' if cliente.descuento_resto is none else '%.2f'|format(cliente.descuento_resto) }}"
+                 placeholder=""
+                 style="width:100%; padding:8px 10px; border:1px solid var(--v2-border); border-radius:6px; font-size:13px; box-sizing:border-box; font-family:inherit;">
+        </div>
+      </div>
+      <div class="hn-modal-foot">
+        <button type="button" class="hn-modal-btn hn-modal-btn-outline" data-modal-close="modal-descuentos-ficha">Cancelar</button>
+        <button type="submit" class="hn-modal-btn hn-modal-btn-primary">Guardar descuentos</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<div id="modal-bloquear" class="hn-modal-overlay" style="display:none;">
+  <div class="hn-modal" style="max-width:440px;">
+    <div class="hn-modal-head">
+      <h3>⏸ Bloquear cliente</h3>
+      <button class="hn-modal-close" data-modal-close="modal-bloquear">×</button>
+    </div>
+    <form method="post" action="{{ url_for('admin_cliente_toggle', cid=cliente.id) }}">
+      <div class="hn-modal-body">
+        <p style="font-size:14px; color:var(--v2-fg); margin:0 0 8px;">
+          ¿Estás seguro que querés bloquear a <strong>{{ cliente.nombre or cliente.razon_social or cliente.usuario }}</strong>?
+        </p>
+        <p style="font-size:13px; color:var(--v2-muted); margin:0;">
+          Una vez bloqueado no podrá iniciar sesión.
+        </p>
+      </div>
+      <div class="hn-modal-foot">
+        <button type="button" class="hn-modal-btn hn-modal-btn-outline" data-modal-close="modal-bloquear">Cancelar</button>
+        <button type="submit" class="hn-modal-btn" style="background:#fee2e2; color:#991b1b; border:1px solid #fecaca;">Bloquear</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<div id="modal-activar" class="hn-modal-overlay" style="display:none;">
+  <div class="hn-modal" style="max-width:440px;">
+    <div class="hn-modal-head">
+      <h3>▶ Activar cliente</h3>
+      <button class="hn-modal-close" data-modal-close="modal-activar">×</button>
+    </div>
+    <form method="post" action="{{ url_for('admin_cliente_toggle', cid=cliente.id) }}">
+      <div class="hn-modal-body">
+        <p style="font-size:14px; color:var(--v2-fg); margin:0 0 8px;">
+          ¿Activar a <strong>{{ cliente.nombre or cliente.razon_social or cliente.usuario }}</strong>?
+        </p>
+        <p style="font-size:13px; color:var(--v2-muted); margin:0;">
+          Volverá a poder iniciar sesión con su usuario.
+        </p>
+      </div>
+      <div class="hn-modal-foot">
+        <button type="button" class="hn-modal-btn hn-modal-btn-outline" data-modal-close="modal-activar">Cancelar</button>
+        <button type="submit" class="hn-modal-btn hn-modal-btn-primary">Activar</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<div id="modal-notas-ficha" class="hn-modal-overlay" style="display:none;">
+  <div class="hn-modal">
+    <div class="hn-modal-head">
+      <h3>📝 Notas internas</h3>
+      <button class="hn-modal-close" data-modal-close="modal-notas-ficha">×</button>
+    </div>
+    <form method="post" action="{{ url_for('admin_cliente_ficha', cid=cliente.id) }}">
+      <input type="hidden" name="accion" value="guardar_notas">
+      <div class="hn-modal-body">
+        <p class="muted" style="margin-bottom:10px; font-size:13px;">
+          Notas internas del admin. No las ve el cliente.
+        </p>
+        <textarea name="notas" rows="6" placeholder="Notas internas del admin..."
+                  style="width:100%; padding:10px 12px; border:1px solid var(--v2-border); border-radius:7px; font-size:13px; resize:vertical; box-sizing:border-box; font-family:inherit;">{{ cliente.notas or '' }}</textarea>
+      </div>
+      <div class="hn-modal-foot">
+        <button type="button" class="hn-modal-btn hn-modal-btn-outline" data-modal-close="modal-notas-ficha">Cancelar</button>
+        <button type="submit" class="hn-modal-btn hn-modal-btn-primary">Guardar notas</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+{# === MODAL DEVICE DETALLE === #}
+{% if cliente.device_token %}
+<div id="modal-device-detalle" class="hn-modal-overlay" style="display:none;">
+  <div class="hn-modal">
+    <div class="hn-modal-head">
+      <h3>Detalle del device</h3>
+      <button class="hn-modal-close" data-modal-close="modal-device-detalle">×</button>
+    </div>
+    <div class="hn-modal-body">
+      <div style="display:grid; grid-template-columns: 1fr 1fr; gap:14px;">
+        <div>
+          <div style="font-size:11px; color:var(--v2-muted); text-transform:uppercase; letter-spacing:0.5px; font-weight:700; margin-bottom:4px;">Etiqueta</div>
+          <div style="font-size:13px; font-weight:600;">{{ cliente.device_label or 'Sin etiqueta' }}</div>
+        </div>
+        <div>
+          <div style="font-size:11px; color:var(--v2-muted); text-transform:uppercase; letter-spacing:0.5px; font-weight:700; margin-bottom:4px;">Token</div>
+          <div style="font-size:12px; font-family:monospace; word-break:break-all; color:var(--v2-fg);">{{ cliente.device_token_short }}</div>
+        </div>
+        <div>
+          <div style="font-size:11px; color:var(--v2-muted); text-transform:uppercase; letter-spacing:0.5px; font-weight:700; margin-bottom:4px;">1er login</div>
+          <div style="font-size:13px;">{{ cliente.device_first_login or '—' }}</div>
+        </div>
+        <div>
+          <div style="font-size:11px; color:var(--v2-muted); text-transform:uppercase; letter-spacing:0.5px; font-weight:700; margin-bottom:4px;">Último login</div>
+          <div style="font-size:13px;">{{ cliente.device_last_login or '—' }}</div>
+        </div>
+      </div>
+    </div>
+    <div class="hn-modal-foot">
+      <form method="post" action="{{ url_for('admin_cliente_device_revoke', cid=cliente.id) }}"
+            style="display:inline; margin-right:auto;"
+            onsubmit="return confirm('¿Revocar el device de {{ cliente.nombre or cliente.usuario }}? Quedara sin vincular y debera vincular uno nuevo.')">
+        <button type="submit" class="hn-modal-btn" style="background:#fee2e2; color:#991b1b; border:1px solid #fecaca;">
+          Revocar device
+        </button>
+      </form>
+      <button type="button" class="hn-modal-btn hn-modal-btn-primary" data-modal-close="modal-device-detalle">Cerrar</button>
+    </div>
+  </div>
+</div>
+{% endif %}
+{% endif %}
+
+<script>
+function toggleDatos(el) {
+  var id = el.getAttribute('data-target');
+  var target = document.getElementById(id);
+  if (!target) return;
+  var open = target.style.display !== 'none';
+  target.style.display = open ? 'none' : 'block';
+  var arrow = el.querySelector('.datos-arrow');
+  if (arrow) arrow.style.transform = open ? 'rotate(0deg)' : 'rotate(180deg)';
+}
+</script>
+
+{% endblock %}
