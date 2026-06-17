@@ -1,0 +1,107 @@
+{% extends "base.html" %}
+{% block title %}Facturas — Admin HIERRONORT{% endblock %}
+{% block content %}
+
+<div class="dashboard-v2 facturas-v2">
+  <div class="page-head">
+    <div class="page-head-left">
+      <a href="{{ url_for('admin') }}" style="font-size:12px; color:var(--v2-muted); text-decoration:none;">← Admin</a>
+      <h1>Facturas</h1>
+      <p>{{ facturas|length }} factura{{ '' if facturas|length == 1 else 's' }} registrada{{ '' if facturas|length == 1 else 's' }} · Solo lectura · Historial de emisiones</p>
+    </div>
+  </div>
+
+  <form method="get" action="{{ url_for('admin_facturas') }}" class="filtros">
+    <span class="filtro-label">Cliente:</span>
+    <select name="cliente_id" class="filtro-select">
+      <option value="">Todos los clientes</option>
+      {% for c in clientes %}
+        <option value="{{ c.id }}" {% if cid_sel == c.id %}selected{% endif %}>{{ c.nombre }}{% if c.usuario %} ({{ c.usuario }}){% endif %}</option>
+      {% endfor %}
+    </select>
+
+    <span class="filtro-label" style="margin-left:8px;">Desde:</span>
+    <input type="date" name="fecha_desde" class="filtro-input" value="{{ fecha_desde }}">
+
+    <span class="filtro-label">Hasta:</span>
+    <input type="date" name="fecha_hasta" class="filtro-input" value="{{ fecha_hasta }}">
+
+    <span class="filtro-label" style="margin-left:8px;">Estado:</span>
+    <select name="estado" class="filtro-select">
+      <option value="">Todos</option>
+      <option value="pagada" {% if estado_sel == 'pagada' %}selected{% endif %}>Pagadas</option>
+      <option value="pendiente" {% if estado_sel == 'pendiente' %}selected{% endif %}>Pendientes</option>
+      <option value="anulada" {% if estado_sel == 'anulada' %}selected{% endif %}>Anuladas</option>
+    </select>
+
+    <span class="filtro-label" style="margin-left:8px;">Monto:</span>
+    <input type="number" name="monto_desde" class="filtro-input" placeholder="$ desde" value="{{ monto_desde }}" min="0" step="0.01" style="width:100px;">
+    <input type="number" name="monto_hasta" class="filtro-input" placeholder="$ hasta" value="{{ monto_hasta }}" min="0" step="0.01" style="width:100px;">
+
+    <button type="submit" class="filtro-btn" style="margin-left:4px;">🔍 Filtrar</button>
+  </form>
+
+  <div class="pedidos-v2" style="padding:0;">
+    {% if facturas %}
+      <div class="tabla-wrap" style="border-radius:0; border-top:none; border-left:none; border-right:none;">
+        <table class="tabla">
+          <thead>
+            <tr>
+              <th>Nº Factura</th>
+              <th>Fecha emisión</th>
+              <th>Fecha subida</th>
+              <th>Cliente</th>
+              <th>Pedido origen</th>
+              <th>Monto</th>
+              <th>Estado</th>
+              <th>Acción</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for f in facturas %}
+              <tr>
+                <td style="font-family:monospace; font-weight:700; font-size:13px;">#{{ f.numero }}</td>
+                <td style="color:var(--v2-muted);">{{ f.fecha or '—' }}</td>
+                <td style="color:var(--v2-muted);">{{ f.fecha or '—' }}</td>
+                <td><strong>{{ f.cliente_nombre or '—' }}</strong></td>
+                <td>
+                  {% if f.pedido_nro %}
+                    <a href="{{ url_for('admin_pedidos') }}#{{ f.pedido_nro }}" style="font-family:monospace; font-size:12px; color:var(--v2-muted); text-decoration:none;">{{ f.pedido_nro }}</a>
+                  {% else %}
+                    <span style="font-family:monospace; font-size:12px; color:var(--v2-muted);">—</span>
+                  {% endif %}
+                </td>
+                <td style="font-weight:700;">{{ fmt(f.total) }}</td>
+                <td>
+                  {% if f.estado == 'pagada' %}
+                    <span class="status status-pagada">✓ Pagada</span>
+                  {% elif f.estado == 'anulada' %}
+                    <span class="status status-anulada">✗ Anulada</span>
+                  {% else %}
+                    <span class="status status-pendiente">⏳ Pendiente</span>
+                  {% endif %}
+                </td>
+                <td>
+                  <div class="acciones">
+                    {% if f.archivo_path %}
+                      <a class="btn-accion btn-blue btn-sm" href="{{ url_for('cliente_factura_pdf', nro=f.numero) }}" target="_blank" style="text-decoration:none; padding:5px 10px; font-size:11px;">⬇ PDF</a>
+                    {% else %}
+                      <span class="btn-accion btn-blue btn-sm" style="opacity:0.4; padding:5px 10px; font-size:11px; cursor:not-allowed;">⬇ PDF</span>
+                    {% endif %}
+                    <a class="btn-accion btn-outline btn-sm" href="{{ url_for('admin_pedidos') }}#{{ f.pedido_nro or '' }}" style="text-decoration:none; padding:5px 10px; font-size:11px;">👁 Detalle</a>
+                  </div>
+                </td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    {% else %}
+      <div class="empty" style="background:var(--v2-surface); border:1px solid var(--v2-border); border-radius:10px; padding:32px; text-align:center; color:var(--v2-muted); margin:16px 24px;">
+        <p>No hay facturas que coincidan con los filtros.</p>
+      </div>
+    {% endif %}
+  </div>
+</div>
+
+{% endblock %}
