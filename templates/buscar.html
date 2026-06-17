@@ -1,0 +1,109 @@
+{% extends "base.html" %}
+{% block title %}Buscar — HIERRONORT{% endblock %}
+{% block content %}
+
+<div class="page-head">
+  <h1>Buscar</h1>
+  <p>Por código o descripción. Escribí al menos 2 letras.</p>
+</div>
+
+<form method="get" action="{{ url_for('buscar') }}" class="search-form">
+  <input type="search" name="q" id="q" value="{{ q }}" placeholder="Ej: ADN, CHAPA, CAÑO 20..." autocomplete="off" autofocus>
+  <button type="submit">Buscar</button>
+</form>
+
+<div id="live-results" class="search-results"></div>
+
+{% if q %}
+  <h2 class="section-title">{{ results|length }} resultado{{ '' if results|length == 1 else 's' }} para "{{ q }}"</h2>
+  <div class="prod-list">
+    {% for r in results %}
+      {% set uv = r.unidad_venta %}
+      {% set uv_text = 'kilo' if uv == 'kg' else uv %}
+      {% set per = '/m' if uv == 'metro' else ('/kg' if uv == 'kg' else '') %}
+      <div class="prod-row-wrap" data-desc="{{ r.desc|lower }}" data-unidad-venta="{{ uv }}">
+        <a class="prod-row" href="{{ url_for('detalle', cod=r.cod) }}">
+          <div class="prod-info">
+            <div class="prod-desc">{{ r.desc }}</div>
+            <div class="prod-cod">
+              <span class="cod-chip">{{ r.cod }}</span>
+              <span class="variant-tag {{ uv_text }}">Por {{ uv_text }}</span>
+              <span class="muted"> · {{ r.rubro }}</span>
+            </div>
+          </div>
+          <div class="prod-price-block">
+            <span class="price">{{ fmt(r.precio_final) }}<span class="price-suf">{{ per }}</span></span>
+            <span class="price-per-label">por {{ uv_text }}</span>
+          </div>
+        </a>
+        <button class="btn-agregar"
+                data-cod="{{ r.cod }}"
+                data-desc="{{ r.desc|e }}"
+                data-precio="{{ r.precio_final }}"
+                data-unidad-venta="{{ uv }}">
+          {% if uv == 'unidad' %}Agregar{% else %}Configurar{% endif %}
+        </button>
+      </div>
+    {% else %}
+      <p>No se encontraron productos.</p>
+    {% endfor %}
+  </div>
+{% endif %}
+
+{% endblock %}
+{% block scripts %}
+<script>
+  const q = document.getElementById('q');
+  const out = document.getElementById('live-results');
+  if (q && out) {
+    let t = null;
+    q.addEventListener('input', () => {
+      clearTimeout(t);
+      const v = q.value.trim();
+      if (v.length < 2) { out.innerHTML = ''; return; }
+      t = setTimeout(() => {
+        fetch('/api/buscar?q=' + encodeURIComponent(v))
+          .then(r => r.json())
+          .then(rows => {
+            if (!rows.length) {
+              out.innerHTML = '<p class="muted" style="padding:16px;text-align:center;">Sin coincidencias.</p>';
+              return;
+            }
+            out.innerHTML = rows.map(r => {
+              const uv = r.unidad_venta || 'unidad';
+              const uvText = uv === 'kg' ? 'kilo' : uv;
+              const per = uv === 'metro' ? '/m' : (uv === 'kg' ? '/kg' : '');
+              const href = uv === 'unidad'
+                ? 'javascript:void(0)'
+                : '/producto/' + r.cod;
+              const onclick = uv === 'unidad'
+                ? `onclick="agregarAlCarrito({cod:'${r.cod}',desc:'${r.desc.replace(/'/g,"\\'")}',precio_por:${r.precio_final},tipo:'NORMAL',unidad_venta:'${uv}',cantidad:1,largo_default:${r.largo_default || 0}})"`
+                : '';
+              const label = uv === 'unidad' ? 'Agregar' : 'Configurar';
+              return `
+                <div class="prod-row-wrap" data-desc="${r.desc.toLowerCase()}">
+                  <a class="prod-row" href="/producto/${r.cod}">
+                    <div class="prod-info">
+                      <div class="prod-desc">${r.desc}</div>
+                      <div class="prod-cod">
+                        <span class="cod-chip">${r.cod}</span>
+                        <span class="variant-tag ${uvText}">Por ${uvText}</span>
+                        <span class="muted"> · ${r.rubro}</span>
+                      </div>
+                    </div>
+                    <div class="prod-price-block">
+                      <span class="price">${formatMoney(r.precio_final)}<span class="price-suf">${per}</span></span>
+                      <span class="price-per-label">por ${uvText}</span>
+                    </div>
+                  </a>
+                  <button class="btn-agregar" ${onclick}>
+                    ${label}
+                  </button>
+                </div>`;
+            }).join('');
+          });
+      }, 200);
+    });
+  }
+</script>
+{% endblock %}
