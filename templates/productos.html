@@ -1,0 +1,203 @@
+{% extends "base.html" %}
+{% block title %}{{ rubro }} — HIERRONORT{% endblock %}
+{% block content %}
+
+{# unidad_venta -> texto humano y clase CSS del variant-tag.
+   DB: 'unidad' | 'metro' | 'kg'
+   UI: 'Por unidad' | 'Por metro' | 'Por kilo'   clase: 'unidad' | 'metro' | 'kilo' #}
+{% macro uv_label(uv) -%}
+  {%- if uv == 'kg' -%}kilo{%- else -%}{{ uv }}{%- endif -%}
+{%- endmacro %}
+
+<div class="page-head row">
+  <div>
+    <a href="{{ url_for('rubros') }}" class="back">← Volver</a>
+    <h1>{{ rubro }}</h1>
+    <p id="items-count">{{ items|length }} producto{{ '' if items|length == 1 else 's' }}</p>
+  </div>
+</div>
+
+{% if filter_buckets %}
+<div class="filter-bar" id="filter-bar" role="tablist" aria-label="Filtros de sub-categoria">
+  {% for b in filter_buckets %}
+    <button type="button" class="filter-btn {% if b.slug == 'todos' %}is-active{% endif %}"
+            data-bucket="{{ b.slug }}" role="tab" aria-selected="{{ 'true' if b.slug == 'todos' else 'false' }}">
+      {{ b.label }} <span class="filter-count">{{ b.count }}</span>
+    </button>
+  {% endfor %}
+</div>
+{% endif %}
+
+<div class="search-inline">
+  {% if items|length >= 10 %}
+    <input type="search" id="filtro" placeholder="Filtrar dentro de {{ rubro }}..." autocomplete="off">
+  {% endif %}
+</div>
+
+<div class="prod-list">
+  {% for it in items %}
+    {% set uv = it.unidad_venta %}
+    {% set uv_text = uv_label(uv) %}
+    {% set largo = it.largo_default or 0 %}
+    <div class="prod-card-wrap" data-desc="{{ it.desc|lower }}" data-unidad-venta="{{ uv }}"{% if it.bucket %} data-bucket="{{ it.bucket }}"{% endif %} data-largo="{{ largo }}">
+      <a class="prod-row" href="{{ url_for('detalle', cod=it.cod) }}">
+        <div class="prod-info">
+          <div class="prod-desc">{{ it.desc }}</div>
+          <div class="prod-cod">
+            <span class="cod-chip">{{ it.cod }}</span>
+            {% if largo and largo > 1 %}
+              <span class="variant-tag barra12m">Barra {{ largo|int }}m</span>
+            {% else %}
+              <span class="variant-tag {{ uv_text }}">Por {{ uv_text }}</span>
+            {% endif %}
+          </div>
+        </div>
+        <div class="prod-price-block">
+          <span class="price">{{ fmt(it.precio_final) }}{% if largo and largo > 1 %} /m{% endif %}</span>
+          {% if largo and largo > 1 %}
+            <div class="price-sub">equiv. barra: {{ fmt(it.precio_final * largo) }}</div>
+          {% endif %}
+        </div>
+      </a>
+      <div class="prod-actions">
+        {% if uv == 'unidad' or uv == 'kg' %}
+          <div class="stepper stepper-list">
+            <button type="button" class="stepper-list-btn" data-list-step="{{ it.cod }}" data-list-delta="-1" aria-label="Restar">−</button>
+            <input type="number" class="stepper-list-input" id="list-qty-{{ it.cod }}"
+                   value="1"
+                   min="{% if uv == 'kg' %}0.1{% else %}1{% endif %}"
+                   step="{% if uv == 'kg' %}0.1{% else %}1{% endif %}">
+            <button type="button" class="stepper-list-btn" data-list-step="{{ it.cod }}" data-list-delta="1" aria-label="Sumar">+</button>
+          </div>
+          <button class="btn-agregar"
+                  data-cod="{{ it.cod }}"
+                  data-desc="{{ it.desc|e }}"
+                  data-precio="{{ it.precio_final }}"
+                  data-tipo="{{ it.tipo }}"
+                  data-unidad-venta="{{ uv }}"
+                  data-qty-input="list-qty-{{ it.cod }}">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="16" height="16">
+              <path d="M12 5v14M5 12h14"/>
+            </svg>
+            Agregar al carrito
+          </button>
+        {% else %}
+          <a class="btn-agregar btn-agregar-full btn-agregar-tall" href="{{ url_for('detalle', cod=it.cod) }}">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16">
+              <circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/>
+              <path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/>
+            </svg>
+            Configurar
+          </a>
+        {% endif %}
+      </div>
+    </div>
+  {% else %}
+    <p>No hay productos en este rubro.</p>
+  {% endfor %}
+</div>
+
+{% endblock %}
+{% block scripts %}
+<script>
+  // Filtro por sub-bucket (client-side, no cambia URL)
+  const filterBar = document.getElementById('filter-bar');
+  if (filterBar) {
+    let activeBucket = 'todos';
+    let searchQuery = '';
+    const items = Array.from(document.querySelectorAll('.prod-card-wrap'));
+    const counterEl = document.getElementById('items-count');
+
+    function update() {
+      let visible = 0;
+      items.forEach(r => {
+        const bucket = r.dataset.bucket || 'todos';
+        const matchBucket = activeBucket === 'todos' || bucket === activeBucket;
+        const matchSearch = !searchQuery || r.dataset.desc.includes(searchQuery);
+        const show = matchBucket && matchSearch;
+        r.style.display = show ? '' : 'none';
+        if (show) visible++;
+      });
+      if (counterEl) {
+        const total = items.length;
+        const bucketLabel = activeBucket === 'todos' ? '' : ` (filtro: ${activeBucket})`;
+        counterEl.textContent = `${visible} de ${total} producto${total === 1 ? '' : 's'}${bucketLabel}`;
+      }
+    }
+
+    filterBar.querySelectorAll('.filter-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        filterBar.querySelectorAll('.filter-btn').forEach(b => {
+          b.classList.remove('is-active');
+          b.setAttribute('aria-selected', 'false');
+        });
+        btn.classList.add('is-active');
+        btn.setAttribute('aria-selected', 'true');
+        activeBucket = btn.dataset.bucket;
+        update();
+      });
+    });
+  }
+
+  const inp = document.getElementById('filtro');
+  if (inp) {
+    inp.addEventListener('input', () => {
+      searchQuery = inp.value.toLowerCase();
+      if (typeof update === 'function') {
+        update();
+      } else {
+        document.querySelectorAll('.prod-card-wrap').forEach(r => {
+          r.style.display = r.dataset.desc.includes(searchQuery) ? '' : 'none';
+        });
+      }
+    });
+  }
+  // Steppers de la lista (input de cantidad al lado del boton Agregar)
+  document.querySelectorAll('.stepper-list-btn[data-list-step]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const cod = btn.dataset.listStep;
+      const delta = parseFloat(btn.dataset.listDelta);
+      const inp = document.getElementById('list-qty-' + cod);
+      if (!inp) return;
+      const step = parseFloat(inp.step) || 1;
+      const min = parseFloat(inp.min);
+      let val = (parseFloat(inp.value) || min) + delta;
+      if (isNaN(val)) val = min;
+      val = Math.max(min, Math.round(val / step) * step);
+      inp.value = step === 1 ? Math.round(val) : val.toFixed(1);
+    });
+  });
+
+  // Botones Agregar (con qty del stepper)
+  document.querySelectorAll('.btn-agregar[data-qty-input]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const uv = btn.dataset.unidadVenta;
+      const qtyInp = document.getElementById(btn.dataset.qtyInput);
+      const qty = qtyInp ? parseFloat(qtyInp.value) : 1;
+      // Buscar el wrap del producto para sacar el largo_default
+      const card = btn.closest('.prod-card-wrap');
+      const largoDefault = card ? parseFloat(card.dataset.largo) || 0 : 0;
+      const item = {
+        cod: btn.dataset.cod,
+        desc: btn.dataset.desc,
+        precio_por: parseFloat(btn.dataset.precio),
+        tipo: btn.dataset.tipo,
+        unidad_venta: uv,
+        largo_default: largoDefault,
+      };
+      if (uv === 'kg') {
+        item.kilos = qty;
+        item.cantidad = qty;
+      } else {
+        item.cantidad = qty;
+      }
+      agregarAlCarrito(item);
+    });
+  });
+
+  // Botones Configurar (metro, link a detalle)
+  document.querySelectorAll('.btn-agregar-full').forEach(btn => {
+    // es un <a>, no necesita JS handler
+  });
+</script>
+{% endblock %}
