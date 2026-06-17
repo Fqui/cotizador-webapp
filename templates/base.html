@@ -1,0 +1,339 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{% block title %}HIERRONORT — Lista de Precios{% endblock %}</title>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}?v=20260608d">
+  <link rel="icon" type="image/png" href="{{ url_for('static', filename='logo-hierronort.png') }}">
+</head>
+<body{% if session.cliente_id %} data-cliente='{{ {
+  "id": session.cliente_id,
+  "nombre": session.cliente_nombre|default(""),
+  "cod_cliente": session.cliente_cod|default(""),
+  "email": session.cliente_email|default(""),
+  "telefono": session.cliente_telefono|default(""),
+  "direccion": session.cliente_direccion|default("")
+}|tojson }}'{% endif %}>
+  {% if session.cliente_id %}
+  <header class="topbar">
+    <a href="{{ url_for('rubros') }}" class="brand">
+      <div class="logo-mark">
+        <img src="{{ url_for('static', filename='logo-hierronort.png') }}" alt="HIERRONORT">
+      </div>
+      <div class="brand-text">
+        <strong>HIERRONORT</strong>
+      </div>
+    </a>
+    <div class="global-search" id="global-search">
+      <svg class="gs-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+      <input type="search" id="global-q" placeholder="Buscar por codigo o descripcion..." autocomplete="off">
+      <div class="global-search-results" id="global-results" hidden></div>
+    </div>
+    <div class="actions" id="topbar-actions">
+      <a class="action-btn" href="{{ url_for('rubros') }}" {% if request.endpoint == 'rubros' %}aria-current="page"{% endif %} title="Inicio">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+        <span class="ab-label">Inicio</span>
+      </a>
+      <a class="action-btn" href="{{ url_for('carrito') }}" {% if request.endpoint == 'carrito' %}aria-current="page"{% endif %} title="Carrito">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/></svg>
+        <span class="ab-label">Carrito</span><span class="cart-count" id="cart-badge" hidden>0</span>
+      </a>
+      {% if not session.is_admin %}
+        <a class="action-btn" href="{{ url_for('mi_cuenta') }}" {% if request.endpoint in ('mi_cuenta','facturas_lista','factura_detalle','pagos_lista') %}aria-current="page"{% endif %} title="Mi Cuenta">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+          <span class="ab-label">Mi Cuenta</span>
+        </a>
+      {% endif %}
+      {% if session.is_admin %}
+        <a class="action-btn admin-only" href="{{ url_for('admin_pedidos') if admin_pedidos_count is defined else '/admin/pedidos' }}" {% if request.endpoint == 'admin_pedidos' %}aria-current="page"{% endif %} title="Pedidos pendientes">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3h18v4H3zM5 7v14h14V7M9 12h6"/></svg>
+          <span class="ab-label" {% if admin_pedidos_count and admin_pedidos_count > 0 %}style="font-weight:700"{% endif %}>
+            Pedidos{% if admin_pedidos_count %}{% if admin_pedidos_count > 0 %} ({{ admin_pedidos_count }}){% endif %}{% endif %}
+          </span>
+        </a>
+        <a class="action-btn admin-only" href="{{ url_for('admin_clientes') }}" {% if request.endpoint in ('admin_clientes', 'admin_cliente_ficha', 'admin_cliente_nuevo') %}aria-current="page"{% endif %} title="Gestión de clientes">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+          <span class="ab-label">Clientes</span>
+        </a>
+        <a class="action-btn admin-only" href="{{ url_for('admin_pagos_pendientes') }}" {% if request.endpoint == 'admin_pagos_pendientes' %}aria-current="page"{% endif %} title="Pagos">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+          <span class="ab-label" {% if n_pagos_pendientes and n_pagos_pendientes > 0 %}style="font-weight:700"{% endif %}>
+            Pagos{% if n_pagos_pendientes and n_pagos_pendientes > 0 %} ({{ n_pagos_pendientes }}){% endif %}
+          </span>
+        </a>
+        <a class="action-btn admin-only" href="{{ url_for('admin') }}" {% if request.endpoint == 'admin' %}aria-current="page"{% endif %} title="Admin">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 1 3 5v6c0 5.5 3.8 10.7 9 12 5.2-1.3 9-6.5 9-12V5z"/></svg>
+          <span class="ab-label">Admin</span>
+        </a>
+      {% endif %}
+    </div>
+    <button type="button" class="hamburger" id="hamburger-btn" aria-label="Abrir menú" aria-expanded="false" aria-controls="topbar-actions">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+    </button>
+  </header>
+  {% endif %}
+
+  <main class="container">
+    {% with msgs = get_flashed_messages(with_categories=true) %}
+      {% if msgs %}
+        {% for cat, msg in msgs %}
+          <div class="flash flash-{{ cat }}">{{ msg }}</div>
+        {% endfor %}
+      {% endif %}
+    {% endwith %}
+    {% block content %}{% endblock %}
+  </main>
+
+  {% if session.is_admin and request.endpoint and request.endpoint.startswith('admin') %}
+  {# === V2.6 — Modal 'Nuevo cliente' (overlay) === #}
+  <div id="modal-nuevo-cliente" class="hn-modal-overlay" style="display:none;">
+    <div class="hn-modal">
+      <div class="hn-modal-head">
+        <h3>+ Nuevo cliente</h3>
+        <button class="hn-modal-close" data-modal-close="modal-nuevo-cliente">×</button>
+      </div>
+      <form id="form-nuevo-cliente" method="post" action="{{ url_for('admin_cliente_nuevo') }}" novalidate>
+        <div class="hn-modal-body">
+          <p class="muted" style="margin-bottom:12px; font-size:13px;">
+            Ingresá el nombre de usuario. La contraseña se generará automáticamente
+            (6 dígitos) y se mostrará al guardar.
+          </p>
+          <label style="display:block; margin-bottom:6px; font-size:12px; font-weight:700; color:var(--v2-muted); text-transform:uppercase; letter-spacing:0.5px;">
+            Usuario <span style="color:var(--v2-primary);">*</span>
+          </label>
+          <input type="text" name="usuario" id="modal-nuevo-usuario" required autofocus
+                 minlength="3" maxlength="20"
+                 placeholder="ej: cliente_marquez"
+                 style="width:100%; padding:10px 12px; border:1px solid var(--v2-border); border-radius:7px; font-size:14px; font-family:monospace; box-sizing:border-box;">
+          <small id="modal-nuevo-hint" style="display:block; margin-top:6px; font-size:12px; color:var(--v2-muted);">
+            Solo letras minúsculas (con acentos y ñ), números y guion bajo. Entre 3 y 20 caracteres.
+          </small>
+
+          <div style="margin-top:18px; padding-top:14px; border-top:1px dashed var(--v2-border);">
+            <p class="muted" style="margin:0 0 10px; font-size:12px;">
+              <strong>Descuentos por rubro (opcional)</strong> — porcentaje que se aplica al precio de lista. Dejá vacío si no aplica.
+            </p>
+            <div style="display:grid; grid-template-columns: 1fr 1fr 1fr; gap:10px;">
+              <div>
+                <label style="display:block; margin-bottom:4px; font-size:11px; font-weight:700; color:var(--v2-muted); text-transform:uppercase; letter-spacing:0.5px;">
+                  ADN (%)
+                </label>
+                <input type="number" name="descuento_adn" min="0" max="100" step="0.01"
+                       placeholder=""
+                       style="width:100%; padding:8px 10px; border:1px solid var(--v2-border); border-radius:6px; font-size:13px; box-sizing:border-box; font-family:inherit;">
+              </div>
+              <div>
+                <label style="display:block; margin-bottom:4px; font-size:11px; font-weight:700; color:var(--v2-muted); text-transform:uppercase; letter-spacing:0.5px;">
+                  Cemento (%)
+                </label>
+                <input type="number" name="descuento_cemento" min="0" max="100" step="0.01"
+                       placeholder=""
+                       style="width:100%; padding:8px 10px; border:1px solid var(--v2-border); border-radius:6px; font-size:13px; box-sizing:border-box; font-family:inherit;">
+              </div>
+              <div>
+                <label style="display:block; margin-bottom:4px; font-size:11px; font-weight:700; color:var(--v2-muted); text-transform:uppercase; letter-spacing:0.5px;">
+                  Resto (%)
+                </label>
+                <input type="number" name="descuento_resto" min="0" max="100" step="0.01"
+                       placeholder=""
+                       style="width:100%; padding:8px 10px; border:1px solid var(--v2-border); border-radius:6px; font-size:13px; box-sizing:border-box; font-family:inherit;">
+              </div>
+            </div>
+          </div>
+
+          <div id="modal-nuevo-error" style="display:none; margin-top:10px; padding:8px 10px; background:#fee2e2; color:#991b1b; border-radius:6px; font-size:12px; font-weight:600;"></div>
+        </div>
+        <div class="hn-modal-foot">
+          <button type="button" class="hn-modal-btn hn-modal-btn-outline" data-modal-close="modal-nuevo-cliente">Cancelar</button>
+          <button type="submit" class="hn-modal-btn hn-modal-btn-primary">Crear cliente</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <div id="modal-pass-cliente" class="hn-modal-overlay" style="display:none;">
+    <div class="hn-modal">
+      <div class="hn-modal-head">
+        <h3>✓ Cliente creado</h3>
+        <button class="hn-modal-close" data-modal-close="modal-pass-cliente">×</button>
+      </div>
+      <div class="hn-modal-body">
+        <p style="margin-bottom:8px; font-size:13px; color:var(--v2-muted);">
+          Usuario: <strong id="modal-pass-usuario" style="font-family:monospace; color:var(--v2-fg);">—</strong>
+        </p>
+        <p style="margin-bottom:8px; font-size:12px; color:var(--v2-warn); font-weight:600;">
+          Esta contraseña se muestra UNA sola vez. Copiala y enviala al cliente.
+        </p>
+        <div style="background:#f0f2f5; border:2px dashed var(--v2-info); border-radius:8px; padding:18px; text-align:center;">
+          <div style="font-size:11px; color:var(--v2-muted); text-transform:uppercase; letter-spacing:0.5px; margin-bottom:6px;">Contraseña</div>
+          <div id="modal-pass-value" style="font-size:32px; font-weight:800; font-family:monospace; color:var(--v2-info); letter-spacing:4px;">——</div>
+        </div>
+        <div style="margin-top:12px; display:flex; gap:8px;">
+          <button type="button" id="modal-pass-copy" class="hn-modal-btn hn-modal-btn-outline" style="flex:1;">📋 Copiar contraseña</button>
+        </div>
+      </div>
+      <div class="hn-modal-foot">
+        <button type="button" class="hn-modal-btn hn-modal-btn-primary" data-modal-close="modal-pass-cliente">Cerrar</button>
+      </div>
+    </div>
+  </div>
+  {% endif %}
+
+  <script src="{{ url_for('static', filename='app.js') }}"></script>
+  {% block scripts %}{% endblock %}
+  {% if session.is_admin and request.endpoint and request.endpoint.startswith('admin') %}
+  <script>
+  (function() {
+    // --- helpers ---
+    function openModal(id) {
+      var m = document.getElementById(id);
+      if (m) m.style.display = 'flex';
+      document.body.style.overflow = 'hidden';
+    }
+    function closeModal(id) {
+      var m = document.getElementById(id);
+      if (m) m.style.display = 'none';
+      document.body.style.overflow = '';
+    }
+    // Cerrar con boton X / Cancelar / Cerrar
+    document.querySelectorAll('[data-modal-close]').forEach(function(btn) {
+      btn.addEventListener('click', function() { closeModal(btn.getAttribute('data-modal-close')); });
+    });
+    // Cerrar clickeando el overlay
+    document.querySelectorAll('.hn-modal-overlay').forEach(function(o) {
+      o.addEventListener('click', function(e) {
+        if (e.target === o) o.style.display = 'none';
+        document.body.style.overflow = '';
+      });
+    });
+    // Escape cierra
+    document.addEventListener('keydown', function(e) {
+      if (e.key === 'Escape') {
+        document.querySelectorAll('.hn-modal-overlay').forEach(function(o) { o.style.display = 'none'; });
+        document.body.style.overflow = '';
+      }
+    });
+
+    // --- abrir modal generico (cualquier [data-modal-open="X"]) ---
+    // Acepta tanto "modal-X" como "X" (si no existe el id tal cual, prueba con prefijo "modal-")
+    document.querySelectorAll('[data-modal-open]').forEach(function(a) {
+      a.addEventListener('click', function(e) {
+        e.preventDefault();
+        var modalId = a.getAttribute('data-modal-open');
+        // Resolver id real: si no existe el elemento, probar con prefijo "modal-"
+        if (!document.getElementById(modalId) && document.getElementById('modal-' + modalId)) {
+          modalId = 'modal-' + modalId;
+        }
+        // Reset del modal nuevo-cliente (limpia input + error)
+        if (modalId === 'modal-nuevo-cliente') {
+          var input = document.getElementById('modal-nuevo-usuario');
+          if (input) { input.value = ''; input.style.borderColor = 'var(--v2-border)'; input.style.background = '#fff'; }
+          var err = document.getElementById('modal-nuevo-error');
+          if (err) { err.style.display = 'none'; err.textContent = ''; }
+          openModal(modalId);
+          if (input) setTimeout(function() { input.focus(); }, 100);
+        } else {
+          openModal(modalId);
+        }
+      });
+    });
+
+    // --- auto-abrir modal si la URL trae ?modal=nuevo (deep link) ---
+    try {
+      var url = new URL(window.location.href);
+      if (url.searchParams.get('modal') === 'nuevo') {
+        var input = document.getElementById('modal-nuevo-usuario');
+        if (input) { input.value = ''; input.style.borderColor = 'var(--v2-border)'; input.style.background = '#fff'; }
+        var err = document.getElementById('modal-nuevo-error');
+        if (err) { err.style.display = 'none'; err.textContent = ''; }
+        openModal('modal-nuevo-cliente');
+        if (input) setTimeout(function() { input.focus(); }, 100);
+      }
+    } catch (e) { /* URL parsing falló, ignorar */ }
+
+    // --- submit del form via fetch ---
+    var form = document.getElementById('form-nuevo-cliente');
+    var inputUsuario = document.getElementById('modal-nuevo-usuario');
+    var regexUsuario = /^[a-záéíóúüñ0-9_]{3,20}$/;
+    function setUsuarioError(msg) {
+      var errBox = document.getElementById('modal-nuevo-error');
+      if (msg) {
+        inputUsuario.style.borderColor = 'var(--v2-primary)';
+        inputUsuario.style.background = '#fef2f2';
+        errBox.textContent = msg;
+        errBox.style.display = 'block';
+      } else {
+        inputUsuario.style.borderColor = 'var(--v2-border)';
+        inputUsuario.style.background = '#fff';
+        errBox.style.display = 'none';
+        errBox.textContent = '';
+      }
+    }
+    if (inputUsuario) {
+      inputUsuario.addEventListener('input', function() {
+        var v = (inputUsuario.value || '').trim();
+        if (v.length === 0) { setUsuarioError(''); return; }
+        if (!regexUsuario.test(v)) {
+          setUsuarioError('Solo letras minúsculas (con acentos y ñ), números y guion bajo. Entre 3 y 20 caracteres.');
+        } else {
+          setUsuarioError('');
+        }
+      });
+    }
+    if (form) {
+      form.addEventListener('submit', function(e) {
+        e.preventDefault();
+        var fd = new FormData(form);
+        var errBox = document.getElementById('modal-nuevo-error');
+        errBox.style.display = 'none';
+        errBox.textContent = '';
+        // Validar regex antes de mandar al backend
+        var v = (inputUsuario.value || '').trim();
+        if (!regexUsuario.test(v)) {
+          setUsuarioError('Solo letras minúsculas (con acentos y ñ), números y guion bajo. Entre 3 y 20 caracteres.');
+          return;
+        }
+        fetch(form.action, {
+          method: 'POST',
+          body: fd,
+          headers: {'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json'},
+          credentials: 'same-origin'
+        })
+        .then(function(r) { return r.json().then(function(j) { return {status: r.status, json: j}; }); })
+        .then(function(res) {
+          if (res.json.ok) {
+            closeModal('modal-nuevo-cliente');
+            document.getElementById('modal-pass-usuario').textContent = res.json.usuario;
+            document.getElementById('modal-pass-value').textContent = res.json.pass;
+            openModal('modal-pass-cliente');
+            setUsuarioError('');
+          } else {
+            setUsuarioError(res.json.error || 'Error desconocido');
+          }
+        })
+        .catch(function(err) {
+          setUsuarioError('Error de red: ' + err.message);
+        });
+      });
+    }
+
+    // --- copiar password ---
+    var copyBtn = document.getElementById('modal-pass-copy');
+    if (copyBtn) {
+      copyBtn.addEventListener('click', function() {
+        var v = document.getElementById('modal-pass-value').textContent;
+        if (navigator.clipboard) {
+          navigator.clipboard.writeText(v).then(function() {
+            copyBtn.textContent = '✓ Copiada';
+            setTimeout(function() { copyBtn.textContent = '📋 Copiar contraseña'; }, 2000);
+          });
+        }
+      });
+    }
+  })();
+  </script>
+  {% endif %}
+</body>
+</html>
